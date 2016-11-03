@@ -18,7 +18,6 @@ import java.util.ArrayList;
 public class Peak {
 
     private ArrayList<LocalPeak> intensityScanPairs;
-    private ArrayList<LocalPeak> intensityScanPairsAbove;
     private ArrayList<LocalPeak> intensityScanPairsBelow;
     private double meanMZ;
     private double tolerance;
@@ -40,8 +39,6 @@ public class Peak {
      */
     public Peak(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh) throws FileParsingException {
         intensityScanPairs = new ArrayList<>();
-        intensityScanPairsAbove = new ArrayList<>();
-        intensityScanPairsAbove.add(startingPoint);
         intensityScanPairsBelow = new ArrayList<>();
         tolerance = tol;
         threshold = thresh;

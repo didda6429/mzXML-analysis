@@ -9,16 +9,14 @@ import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.TreeMap;
+import java.util.*;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
 
 public class Main {
 
     public static ArrayList<IScan> scanArrayList;
+    public static ArrayList<LocalPeak> peakList;
     static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
 
     public static void main(String[] args) throws FileParsingException {
@@ -51,7 +49,6 @@ public class Main {
         } catch (FileParsingException e){
             System.out.println("FileParsingException line 51");
         }
-        int i=0;
         // let's traverse the data-structure
         TreeMap<Integer, IScan> num2scanMap = scans.getMapNum2scan();
         scanArrayList = new ArrayList<>(); //ArrayList containing only the data from the scans with spectrums
@@ -62,7 +59,6 @@ public class Main {
                 //System.out.printf("%s has a parsed spectrum, it contains %d data points\n",
                 //        scan.toString(), spectrum.getMZs().length);
                 scanArrayList.add(scan);
-                i++;
             }
         }
 
@@ -73,48 +69,39 @@ public class Main {
             spectrumArrayList.add(scan.fetchSpectrum());
         }
 
+        //Compiles all of the significant peaks (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
+        peakList = localPeakList(scanArrayList,spectrumArrayList,500);
         //finds the maximum intensity peak across the entire database
         // NOTE --> this is only being used for testing at the moment
-        LocalPeak maxPeak = maxIntensityPeak(spectrumArrayList,400,50);
+        //LinkedList<LocalPeak> maxPeaks = maxIntensityPeak(spectrumArrayList,400,50);
 
-
-        //LocalPeak maxPeak = Peak.maxIntWithinTol(spectrumArrayList.get(540),616.2,400,540,scanArrayList.get(540).getRt());
-        //LocalPeak maxPeak = Peak.maxIntWithinTol(spectrumArrayList.get(spec1),location,400,spec1,time); //finds the globally maximum peak
-        Peak peak1 = new Peak(scanArrayList, maxPeak, 400, 500);
+        Peak peak1 = new Peak(scanArrayList, peakList.get(0), 400, 500);
         System.out.println(peak1.getIntensityScanPairs().size());
         System.out.println("test");
     }
 
     /**
-     * Function which scans the dataset to find the maximum intensity datapoints. The number of peaks found
-     * is (approximately?) equal to the value of numOfPeaks and then only the single highest value is returned.
-     * @param spectra an ArrayList containing all the spectrum data from all the scans
-     * @param tol The tolerance to jitter (passed to a call to Peak.maxIntWithinTol)
-     * @param numOfPeaks The number of peaks to look for
-     * @return The highest intensity peak across the entire dataset
+     * Takes all of the spectrum data from across the entire dataset and combines it into a single ArrayList. That
+     * ArrayList is then sorted into descending order of intensity to help streamline downstream use. Also, only significant
+     * values (intensity>threshold) are added to the ArrayList, everything else is discarded as noise
+     * @param scanArrayList An ArrayList containing the data for all scans
+     * @param spectra An ArrayList containing the data for all spectra
+     * @param threshold The threshold used to determine whether or not a peak is noise or signal
+     * @return An ArrayList of LocalPeak objects containing all the significant peaks
      */
-    static LocalPeak maxIntensityPeak(ArrayList<ISpectrum> spectra, double tol, int numOfPeaks){
-        //LinkedList which stores the maximum peaks
-        //In this usage, the LinkedList is treated as a FILO stack
-        LinkedList<LocalPeak> tempList = new LinkedList<>();
-        for(int i=0; i<numOfPeaks; i++){
-            tempList.push(Peak.maxIntWithinTol(spectra.get(1),spectra.get(1).getMZs()[0],tol,1,scanArrayList.get(1).getRt()));
-        }
-        //loops which find the maximum intensities and add them to the stack (LinkedList)
-        for(int i = 0; i<spectra.size(); i++){
-            double maxV = spectra.get(i).getMaxInt();
-            double loc = spectra.get(i).getMaxIntMz();
-            for(int j=0; j<numOfPeaks-1; j++) {
-                if (maxV > tempList.get(j).getIntensity()) {
-                    tempList.add(j,Peak.maxIntWithinTol(spectra.get(i), loc, tol, i, scanArrayList.get(i).getRt()));
-                    j=11;
+    static ArrayList<LocalPeak> localPeakList(ArrayList<IScan> scanArrayList, ArrayList<ISpectrum> spectra, double threshold){
+        ArrayList<LocalPeak> peakList = new ArrayList<>();
+        for(int j=0; j<spectra.size(); j++){
+            ISpectrum spectrum = spectra.get(j);
+            double[] spec = spectrum.getIntensities();
+            double[] mzVal = spectrum.getMZs();
+            for(int i = 0; i<spectrum.getIntensities().length; i++){
+                if(spec[i]>threshold){
+                    peakList.add(new LocalPeak(j,spec[i],mzVal[i],scanArrayList.get(j).getRt()));
                 }
             }
         }
-        //return Peak.maxIntWithinTol(spectra.get(spec1),location,tol,spec1,time);
-        //for(int i=tempList.size(); i>tempList.size()-10; i--){
-        //    tempList.remove(i-1);
-        //}
-        return tempList.pop();
+        Collections.sort(peakList);
+        return peakList;
     }
 }
