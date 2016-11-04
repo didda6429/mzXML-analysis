@@ -12,12 +12,15 @@ import java.nio.file.Paths;
 import java.util.*;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
+//"C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML"
 
 public class Main {
 
     public static ArrayList<IScan> scanArrayList;
     public static ArrayList<LocalPeak> peakList;
-    static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    public static ArrayList<Peak> chromatograms;
+    //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
 
     public static void main(String[] args) throws FileParsingException {
 
@@ -71,12 +74,15 @@ public class Main {
 
         //Compiles all of the significant peaks (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
         peakList = localPeakList(scanArrayList,spectrumArrayList,500);
-        //finds the maximum intensity peak across the entire database
-        // NOTE --> this is only being used for testing at the moment
-        //LinkedList<LocalPeak> maxPeaks = maxIntensityPeak(spectrumArrayList,400,50);
 
-        Peak peak1 = new Peak(scanArrayList, peakList.get(0), 400, 500);
-        System.out.println(peak1.getIntensityScanPairs().size());
+        chromatograms = new ArrayList<>();
+        for(LocalPeak localPeak : peakList){
+            if(!localPeak.getIsUsed()){
+                chromatograms.add(new Peak(scanArrayList,localPeak,400,500));
+            }
+        }
+
+        System.out.println(chromatograms.get(0).getIntensityScanPairs().size());
         System.out.println("test");
     }
 
