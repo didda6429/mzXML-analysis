@@ -49,13 +49,13 @@ public class Peak {
         tolerance = tol;
         threshold = thresh;
         meanMZ = startingPoint.getMZ();
-        System.out.println(createPeakBelow(scanList, meanMZ, 400, startingPoint.getScanNumber() - 1));
+        createPeakBelow(scanList, meanMZ, 400, startingPoint.getScanNumber() - 1);
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
             intensityScanPairs.add(intensityScanPairsBelow.get(i - 1));
         }
         intensityScanPairs.add(startingPoint);
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
-            System.out.println(createPeakAbove(scanList, averageMZ(), 400, startingPoint.getScanNumber() + 1));
+            createPeakAbove(scanList, averageMZ(), 400, startingPoint.getScanNumber() + 1);
         }
         startingPointIndex = intensityScanPairsBelow.size();
         findLocalMinima();
@@ -86,8 +86,6 @@ public class Peak {
                 tempPeak.setIsUsed();
                 intensityScanPairs.add(tempPeak);
                 Main.peakList.get(tempInt).setIsUsed();
-                System.out.println(increment);
-                System.out.println(increment < scanList.size() - 2);
                 if (increment < scanList.size() - 2) {
                     return createPeakAbove(scanList, averageMZ(), toler, increment + 1);
                 } else {
@@ -122,7 +120,6 @@ public class Peak {
                 tempPeak.setIsUsed();
                 intensityScanPairsBelow.add(tempPeak);
                 Main.peakList.get(tempInt).setIsUsed();
-                System.out.println(increment);
                 return createPeakBelow(scanList, averageMZBelow(), toler, increment - 1);
             }
         }
