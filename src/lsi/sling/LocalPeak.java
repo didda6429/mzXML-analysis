@@ -1,6 +1,4 @@
-package com.company;
-
-import java.util.Objects;
+package lsi.sling;
 
 /**
  * Represents a single peak from the MZXML as a single data structure containing the relevant information.

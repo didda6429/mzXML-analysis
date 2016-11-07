@@ -1,4 +1,4 @@
-package com.company;
+package lsi.sling;
 
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
@@ -17,9 +17,9 @@ import java.util.ArrayList;
  */
 public class Peak {
 
-    //static ArrayList<LocalPeak> allPeaks = Main.peakList;
     private ArrayList<LocalPeak> intensityScanPairs;
     private ArrayList<LocalPeak> intensityScanPairsBelow;
+    private ArrayList<Integer> pointsOfInflection;
     private double meanMZ;
     private double tolerance;
     private double threshold; //used to define noise to signal ratio
@@ -45,6 +45,7 @@ public class Peak {
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
         intensityScanPairsBelow = new ArrayList<>();
+        pointsOfInflection = new ArrayList<>();
         tolerance = tol;
         threshold = thresh;
         meanMZ = startingPoint.getMZ();
@@ -57,6 +58,7 @@ public class Peak {
             System.out.println(createPeakAbove(scanList, averageMZ(), 400, startingPoint.getScanNumber() + 1));
         }
         startingPointIndex = intensityScanPairsBelow.size();
+        findLocalMinima();
     }
 
     /**
@@ -154,6 +156,20 @@ public class Peak {
             }
         }
         return new LocalPeak(increment, maxIntensity, spec.getMZs()[maxIndex], RT);
+    }
+
+    /**
+     * Finds the local minima within the peak (based on intensities). This information is directly related to separating
+     * isobars.
+     */
+    private void findLocalMinima(){
+        double[] intensityArray = new double[intensityScanPairs.size()];
+        for(int i=0; i<intensityArray.length; i++)
+            intensityArray[i] = intensityScanPairs.get(i).getIntensity();
+        for(int i=1; i<intensityArray.length-1;i++){
+            if(intensityArray[i-1]>intensityArray[i]&&intensityArray[i]<intensityArray[i+1])
+                pointsOfInflection.add(i);
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-package com.company;
+package lsi.sling;
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -78,7 +78,7 @@ public class Main {
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Peak(scanArrayList,localPeak,400,500));
+                chromatograms.add(new Peak(scanArrayList,localPeak,400,1000));
             }
         }
 
