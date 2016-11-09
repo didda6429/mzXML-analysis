@@ -1,10 +1,16 @@
 package lsi.sling;
 
+import flanagan.analysis.CurveSmooth;
+
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.lang.Math;
+
 
 /**
  * Represents a group of LocalPeaks which together form a peak which is significant across the entire dataset.
@@ -26,6 +32,7 @@ public class Peak {
     private int startingPointIndex; //index of the max peak within the ArrayList (max intensity)
     private double startingPointRT;
     private double startingPointIntensity;
+    private double[] smoothData;
 
     /**
      * Constructor which creates a new Peak. This class is designed so that in normal use, a user only every needs
@@ -49,13 +56,13 @@ public class Peak {
         tolerance = tol;
         threshold = thresh;
         meanMZ = startingPoint.getMZ();
-        System.out.println(createPeakBelow(scanList, meanMZ, 400, startingPoint.getScanNumber() - 1));
+        System.out.println(createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1));
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
             intensityScanPairs.add(intensityScanPairsBelow.get(i - 1));
         }
         intensityScanPairs.add(startingPoint);
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
-            System.out.println(createPeakAbove(scanList, averageMZ(), 400, startingPoint.getScanNumber() + 1));
+            System.out.println(createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1));
         }
         startingPointIndex = intensityScanPairsBelow.size();
         findLocalMinima();
@@ -219,6 +226,14 @@ public class Peak {
     }
 
     /**
+     * Returns the points of inflection (turning points) for the peak. Specifically, this method returns the indices of
+     * the turning points in the ArrayList
+     *
+     * @return the locations of the turning points
+     */
+    ArrayList<Integer> getLocalPointsOfInflection() { return pointsOfInflection; }
+
+    /**
      * Returns the mean m/z for the Peak
      *
      * @return the mean m/z value as a double
@@ -267,4 +282,66 @@ public class Peak {
      * @return the intensity of the starting point as a double
      */
     double getStartingPointIntensity() { return startingPointIntensity;}
+
+    /**
+     * Returns only the intensities in an array
+     * @return only the intensities from the ion chromatogram
+     */
+    double[] getIntensities(){
+        double[] val = new double[intensityScanPairs.size()];
+        for(int i=0; i<intensityScanPairs.size(); i++){
+            val[i] = intensityScanPairs.get(i).getIntensity();
+        }
+        return val;
+    }
+
+    /**
+     * Returns only the retention times in an array
+     * @return only the retention times from the ion chromatogram
+     */
+    double[] getRT(){
+        double[] val = new double[intensityScanPairs.size()];
+        for(int i=0; i<intensityScanPairs.size(); i++){
+            val[i] = intensityScanPairs.get(i).getRT();
+        }
+        return val;
+    }
+
+    /**
+     * Writes the smoothData information to a file. NOTE, this method is only intended for debugging at the moment
+     * (I am using it to transfer the data to R more easily where it's easier to plot and validate the data)
+     * @throws IOException IOException from the file handling stuff
+     */
+    void writeToCSV() throws IOException {
+        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//peaks//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + ".csv");
+        StringBuilder sb = new StringBuilder();
+        double[] inten = this.smoothData;
+        double[] rt = this.getRT();
+        for(int i=0; i<inten.length; i++){
+            sb.append(inten[i] + "," + rt[i] + "\n");
+        }
+        writer.append(sb);
+        writer.close();
+    }
+
+    /**
+     * Smooths out the curve using a savitzky-Golay Plot (from the Michael Thomas Flanagan's java scientific library).
+     * The the number of points to use is calculated as 6*log(ArrayList.size). The smoothed data is then stored into
+     * the class variable double[] smoothData.
+     */
+    void smooth(){
+        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
+        //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
+        smoothData = curveSmooth.savitzkyGolayPlot((int) (6*Math.log(this.getRT().length)));
+        //smoothData = curveSmooth.savitzkyGolayPlot(15);
+        //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
+        System.out.println("test");
+    }
+
+    /**
+     * Returns the smoothed dataset as calculated in smooth() (using a Savitzky-Golay filter)
+     * @return the smoothed dataset as doubles
+     */
+    double[] getSmoothData() { return smoothData;}
+
 }

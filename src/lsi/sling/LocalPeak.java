@@ -81,7 +81,12 @@ public class LocalPeak implements Comparable<LocalPeak> {
         isUsed = true;
     }
 
-
+    /**
+     * Implementation of the required method from the Comparable interface. In this case, the value returned is
+     * dependent on the intensities of the 2 LocalPeak objects.
+     * @param o a LocalPeak object to compare with
+     * @return 1 if this object has higher intensity, -1 if this object has lower intensity, 0 if the intensities are equal
+     */
     @Override
     public int compareTo(LocalPeak o) {
         int val = 0;
@@ -93,9 +98,14 @@ public class LocalPeak implements Comparable<LocalPeak> {
         return val;
     }
 
+    /**
+     * Implementation of the required method from the Comparable interface. Compares two LocalPeak objects for equality
+     * (two LocalPeaks are equal if all of their fields contain equal values)
+     * @param obj A LocalPeak object to compare with
+     * @return true if the two objects are 'equal', otherwise false
+     */
     @Override
-    public boolean equals(Object obj)
-    {
+    public boolean equals(Object obj) {
         if (obj == this)
         {
             return true;
