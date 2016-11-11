@@ -7,7 +7,6 @@ import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
 import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -85,17 +84,20 @@ public class Main {
 
         System.out.println(chromatograms.get(0).getIntensityScanPairs().size());
 
-        /*for(int i=0; i<15; i++) {
-            if (chromatograms.get(i).getLocalPointsOfInflection().size() >= 1) {
+        /*for(int i=0; i<chromatograms.size(); i++) {
+            if (chromatograms.get(i).getPointsOfInflection().size() >= 1) {
                 try {
-                    chromatograms.get(i).smooth();
+                    chromatograms.get(i).smoothToFindMinima();
                     chromatograms.get(i).writeToCSV();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }*/
-        chromatograms.get(0).smooth();
+
+        for(int i=0; i<15; i++){
+            chromatograms.get(i).smoothToFindMinima();
+        }
 
         System.out.println("test");
     }

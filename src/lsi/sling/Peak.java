@@ -10,6 +10,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.lang.Math;
+import java.util.*;
 
 
 /**
@@ -167,9 +168,13 @@ public class Peak {
 
     /**
      * Finds the local minima within the peak (based on intensities). This information is directly related to separating
-     * isobars.
+     * isobars. Note: This method finds the minimas by comparing adjacent intensities and therefore picks up a lot of
+     * noise. It has been replaced by the smoothToFindMinima method but is retained for potential use in cases where
+     * the smoothing doesnt work properly.
      */
+    @Deprecated
     private void findLocalMinima(){
+        pointsOfInflection.clear();
         double[] intensityArray = new double[intensityScanPairs.size()];
         for(int i=0; i<intensityArray.length; i++)
             intensityArray[i] = intensityScanPairs.get(i).getIntensity();
@@ -231,7 +236,7 @@ public class Peak {
      *
      * @return the locations of the turning points
      */
-    ArrayList<Integer> getLocalPointsOfInflection() { return pointsOfInflection; }
+    ArrayList<Integer> getPointsOfInflection() { return pointsOfInflection; }
 
     /**
      * Returns the mean m/z for the Peak
@@ -327,19 +332,29 @@ public class Peak {
     /**
      * Smooths out the curve using a savitzky-Golay Plot (from the Michael Thomas Flanagan's java scientific library).
      * The the number of points to use is calculated as 6*log(ArrayList.size). The smoothed data is then stored into
-     * the class variable double[] smoothData.
+     * the class variable double[] smoothData. The indices of the smoothed-minima are also stored into pointsOfInflection,
+     * replacing whatever values were there.
      */
-    void smooth(){
+    void smoothToFindMinima(){
         CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
         smoothData = curveSmooth.savitzkyGolayPlot((int) (6*Math.log(this.getRT().length)));
         //smoothData = curveSmooth.savitzkyGolayPlot(15);
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
+        double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
+        pointsOfInflection.clear();
+        ArrayList temp = new ArrayList();
+        for(int i=0; i<getRT().length; i++){
+            temp.add(getRT()[i]);
+        }
+        for(int i=0; i<minima[0].length; i++){
+            pointsOfInflection.add(temp.indexOf(minima[0][i]));
+        }
         System.out.println("test");
     }
 
     /**
-     * Returns the smoothed dataset as calculated in smooth() (using a Savitzky-Golay filter)
+     * Returns the smoothed dataset as calculated in smoothToFindMinima() (using a Savitzky-Golay filter)
      * @return the smoothed dataset as doubles
      */
     double[] getSmoothData() { return smoothData;}
