@@ -18,7 +18,8 @@ public class Main {
 
     public static ArrayList<IScan> scanArrayList;
     public static ArrayList<LocalPeak> peakList;
-    public static ArrayList<Peak> chromatograms;
+    public static ArrayList<Chromatogram> chromatograms;
+    public static ArrayList<PeakCluster> peakClusters;
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
 
@@ -72,13 +73,13 @@ public class Main {
             spectrumArrayList.add(scan.fetchSpectrum());
         }
 
-        //Compiles all of the significant peaks (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
+        //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
         peakList = localPeakList(scanArrayList,spectrumArrayList,500);
 
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Peak(scanArrayList,localPeak,20,1000));
+                chromatograms.add(new Chromatogram(scanArrayList,localPeak,20,1000));
             }
         }
 
@@ -95,8 +96,21 @@ public class Main {
             }
         }*/
 
-        for(int i=0; i<15; i++){
-            chromatograms.get(i).smoothToFindMinima();
+        peakClusters = new ArrayList<>();
+        ArrayList doubles = new ArrayList(); //only used for testing
+
+        for (Chromatogram chromatogram : chromatograms){
+            if(!chromatogram.getInCluster()){
+                chromatogram.setInCluster();
+                peakClusters.add(new PeakCluster(chromatogram,20));
+            }
+        }
+
+        //only used for testing
+        for(int i=0; i<peakClusters.size(); i++){
+            if(peakClusters.get(i).getChromatograms().size()==1){
+                doubles.add(i);
+            }
         }
 
         System.out.println("test");
@@ -109,7 +123,7 @@ public class Main {
      * @param scanArrayList An ArrayList containing the data for all scans
      * @param spectra An ArrayList containing the data for all spectra
      * @param threshold The threshold used to determine whether or not a peak is noise or signal
-     * @return An ArrayList of LocalPeak objects containing all the significant peaks
+     * @return An ArrayList of LocalPeak objects containing all the significant chromatograms
      */
     static ArrayList<LocalPeak> localPeakList(ArrayList<IScan> scanArrayList, ArrayList<ISpectrum> spectra, double threshold){
         ArrayList<LocalPeak> peakList = new ArrayList<>();
