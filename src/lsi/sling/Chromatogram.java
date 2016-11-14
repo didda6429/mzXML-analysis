@@ -2,9 +2,13 @@ package lsi.sling;
 
 import flanagan.analysis.CurveSmooth;
 
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.util.DoubleArray;
+import org.omg.CORBA.CharHolder;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
+import umich.ms.fileio.filetypes.mzxml.jaxb.Scan;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -27,6 +31,7 @@ public class Chromatogram {
     private ArrayList<LocalPeak> intensityScanPairs;
     private ArrayList<LocalPeak> intensityScanPairsBelow;
     private ArrayList<Integer> pointsOfInflection;
+    ArrayList<Isobar> isobars;
     private double meanMZ;
     private double tolerance;
     private double threshold; //used to define noise to signal ratio
@@ -73,6 +78,26 @@ public class Chromatogram {
         } else {
             findLocalMinima();
         }
+        isobars = new ArrayList<>();
+        pointsOfInflection.add(0,0);
+        pointsOfInflection.add(pointsOfInflection.size(),intensityScanPairs.size());
+        if(intensityScanPairs.size()>4 && pointsOfInflection.size()>2) { //only performs the following code if the data has been smoothed
+            for (int i = 0; i < pointsOfInflection.size()-1; i++) {
+                ArrayList<LocalPeak> pairs = new ArrayList<>();
+                double[] smooth = new double[pointsOfInflection.get(i+1)-pointsOfInflection.get(i)];
+                int x = 0;
+                for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i+1); j++) {
+                    pairs.add(intensityScanPairs.get(j));
+                    smooth[x] = smoothData[j];
+                    x++;
+                }
+                //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
+                isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+            }
+        } else {
+            isobars.add(new Isobar(intensityScanPairs,meanMZ,tolerance,threshold,smoothData,inCluster));
+        }
+        System.out.println("test");
     }
 
     /**
@@ -100,8 +125,6 @@ public class Chromatogram {
                 tempPeak.setIsUsed();
                 intensityScanPairs.add(tempPeak);
                 Main.peakList.get(tempInt).setIsUsed();
-                System.out.println(increment);
-                System.out.println(increment < scanList.size() - 2);
                 if (increment < scanList.size() - 2) {
                     return createPeakAbove(scanList, averageMZ(), toler, increment + 1);
                 } else {
@@ -136,12 +159,12 @@ public class Chromatogram {
                 tempPeak.setIsUsed();
                 intensityScanPairsBelow.add(tempPeak);
                 Main.peakList.get(tempInt).setIsUsed();
-                System.out.println(increment);
                 return createPeakBelow(scanList, averageMZBelow(), toler, increment - 1);
             }
         }
         return 1;
     }
+
 
     /**
      * Finds the highest single peak within a given tolerance in a individual spectrum(to account for jitter).
