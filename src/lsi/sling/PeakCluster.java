@@ -94,7 +94,6 @@ public class PeakCluster {
      * if the charge!=2, it does NOT explicitly look for another chromatogram at the mz+-1 locations. However, this
      * functionality does exist but is currently commented out of the code to improve performance.
      * @param startingPoint the starting Chromatogram
-     * @param ppm the tolerance used when looking at mz values of adjacent peaks
      */
     private void checkCharge(Chromatogram startingPoint){
         double RT = startingPoint.getStartingPointRT();

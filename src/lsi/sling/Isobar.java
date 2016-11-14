@@ -1,6 +1,7 @@
 package lsi.sling;
 
 import java.util.ArrayList;
+import java.lang.Math;
 
 /**
  * This class represents a isobar within a chromatogram. In normal usage, this should only ever be called from within
@@ -20,6 +21,7 @@ public class Isobar {
     private double maxIntensity;
     private double[] smoothData;
     private boolean inCluster;
+    private boolean isValid;
 
     /**
      * This constructor creates Isobar objects which represent isobars in the origin Chromatogram. By definition
@@ -50,6 +52,24 @@ public class Isobar {
         maxIntensity = scanPairs.get(index).getIntensity();
         smoothData = smooth;
         inCluster = cluster;
+        isValid = calculateIsValid(10); //play around with this constant
+    }
+
+    /**
+     * Method to determine if a isobar contains a valid peak. It does this by comparing the maxima with the minimum value
+     * of the endpoints to (try to) determine if the peak is just noise or not.
+     * @param threshold
+     * @return
+     */
+    private boolean calculateIsValid(double threshold){
+        double max = maxIntensity;
+        double min = Math.min(intensityScanPairs.get(0).getIntensity(),intensityScanPairs.get(intensityScanPairs.size()-1).getIntensity());
+        double temp = max/min;
+        if(temp>threshold){
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public ArrayList<LocalPeak> getIntensityScanPairs() { return intensityScanPairs;}

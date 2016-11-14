@@ -28,6 +28,7 @@ public class Main {
         // Creating data source
         Path path = Paths.get(location);
         MZXMLFile source = new MZXMLFile(path.toString());
+        long time = System.currentTimeMillis();
 
         // This is a data structure used to store scans and to navigate around the run
         ScanCollectionDefault scans = new ScanCollectionDefault();
@@ -113,6 +114,8 @@ public class Main {
             }
         }
 
+        time = System.currentTimeMillis()-time;
+        System.out.println(time);
         System.out.println("test");
     }
 
