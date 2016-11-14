@@ -1,10 +1,21 @@
 package lsi.sling;
 
+import flanagan.analysis.CurveSmooth;
+
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.util.DoubleArray;
+import org.omg.CORBA.CharHolder;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
+import umich.ms.fileio.filetypes.mzxml.jaxb.Scan;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.lang.Math;
+import java.util.*;
+
 
 /**
  * Represents a group of LocalPeaks which together form a peak which is significant across the entire dataset.
@@ -15,20 +26,23 @@ import java.util.ArrayList;
  *
  * @author Adithya Diddapur
  */
-public class Peak {
+public class Chromatogram {
 
     private ArrayList<LocalPeak> intensityScanPairs;
     private ArrayList<LocalPeak> intensityScanPairsBelow;
     private ArrayList<Integer> pointsOfInflection;
+    ArrayList<Isobar> isobars;
     private double meanMZ;
     private double tolerance;
     private double threshold; //used to define noise to signal ratio
     private int startingPointIndex; //index of the max peak within the ArrayList (max intensity)
     private double startingPointRT;
     private double startingPointIntensity;
+    private double[] smoothData;
+    private boolean inCluster;
 
     /**
-     * Constructor which creates a new Peak. This class is designed so that in normal use, a user only every needs
+     * Constructor which creates a new Chromatogram. This class is designed so that in normal use, a user only every needs
      * to call the constructor which acts as a wrapper for everything.
      * i.e. Once called, the constructor initialises all the relevant variables and runs the recursive algorithm to
      * find the edges of the peak (where it stops being significant) Note: at the moment significance is determined by
@@ -40,7 +54,7 @@ public class Peak {
      * @param thresh        The threshold to determine the end points of the peak
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    public Peak(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh) throws FileParsingException {
+    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh) throws FileParsingException {
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
@@ -48,17 +62,42 @@ public class Peak {
         pointsOfInflection = new ArrayList<>();
         tolerance = tol;
         threshold = thresh;
+        inCluster = false;
         meanMZ = startingPoint.getMZ();
-        createPeakBelow(scanList, meanMZ, 400, startingPoint.getScanNumber() - 1);
+        System.out.println(createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1));
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
             intensityScanPairs.add(intensityScanPairsBelow.get(i - 1));
         }
         intensityScanPairs.add(startingPoint);
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
-            createPeakAbove(scanList, averageMZ(), 400, startingPoint.getScanNumber() + 1);
+            System.out.println(createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1));
         }
         startingPointIndex = intensityScanPairsBelow.size();
-        findLocalMinima();
+        if(intensityScanPairs.size()>4) {
+            smoothToFindMinima();
+        } else {
+            findLocalMinima();
+        }
+        isobars = new ArrayList<>();
+        pointsOfInflection.add(0,0);
+        pointsOfInflection.add(pointsOfInflection.size(),intensityScanPairs.size());
+        if(intensityScanPairs.size()>4 && pointsOfInflection.size()>2) { //only performs the following code if the data has been smoothed
+            for (int i = 0; i < pointsOfInflection.size()-1; i++) {
+                ArrayList<LocalPeak> pairs = new ArrayList<>();
+                double[] smooth = new double[pointsOfInflection.get(i+1)-pointsOfInflection.get(i)];
+                int x = 0;
+                for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i+1); j++) {
+                    pairs.add(intensityScanPairs.get(j));
+                    smooth[x] = smoothData[j];
+                    x++;
+                }
+                //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
+                isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+            }
+        } else {
+            isobars.add(new Isobar(intensityScanPairs,meanMZ,tolerance,threshold,smoothData,inCluster));
+        }
+        System.out.println("test");
     }
 
     /**
@@ -126,13 +165,14 @@ public class Peak {
         return 1;
     }
 
+
     /**
      * Finds the highest single peak within a given tolerance in a individual spectrum(to account for jitter).
      * <p>
-     * NOTE: This function is crucial to the operation of the Peak data structure and is
+     * NOTE: This function is crucial to the operation of the Chromatogram data structure and is
      * called by several other functions at higher levels so be careful when modifying it
      *
-     * @param spec      The single spectrum from which to extract a single Peak
+     * @param spec      The single spectrum from which to extract a single Chromatogram
      * @param mean      The value around which the tolerance is centered (this partly defines where the single peak will
      *                  be extracted from
      * @param tol       The tolerance to jitter
@@ -157,9 +197,13 @@ public class Peak {
 
     /**
      * Finds the local minima within the peak (based on intensities). This information is directly related to separating
-     * isobars.
+     * isobars. Note: This method finds the minimas by comparing adjacent intensities and therefore picks up a lot of
+     * noise. It has been replaced by the smoothToFindMinima method but is retained for potential use in cases where
+     * the smoothing doesnt work properly.
      */
+    @Deprecated
     private void findLocalMinima(){
+        pointsOfInflection.clear();
         double[] intensityArray = new double[intensityScanPairs.size()];
         for(int i=0; i<intensityArray.length; i++)
             intensityArray[i] = intensityScanPairs.get(i).getIntensity();
@@ -216,7 +260,15 @@ public class Peak {
     }
 
     /**
-     * Returns the mean m/z for the Peak
+     * Returns the points of inflection (turning points) for the peak. Specifically, this method returns the indices of
+     * the turning points in the ArrayList
+     *
+     * @return the locations of the turning points
+     */
+    ArrayList<Integer> getPointsOfInflection() { return pointsOfInflection; }
+
+    /**
+     * Returns the mean m/z for the Chromatogram
      *
      * @return the mean m/z value as a double
      */
@@ -264,4 +316,92 @@ public class Peak {
      * @return the intensity of the starting point as a double
      */
     double getStartingPointIntensity() { return startingPointIntensity;}
+
+    /**
+     * Returns only the intensities in an array
+     * @return only the intensities from the ion chromatogram
+     */
+    double[] getIntensities(){
+        double[] val = new double[intensityScanPairs.size()];
+        for(int i=0; i<intensityScanPairs.size(); i++){
+            val[i] = intensityScanPairs.get(i).getIntensity();
+        }
+        return val;
+    }
+
+    /**
+     * Returns only the retention times in an array
+     * @return only the retention times from the ion chromatogram
+     */
+    double[] getRT(){
+        double[] val = new double[intensityScanPairs.size()];
+        for(int i=0; i<intensityScanPairs.size(); i++){
+            val[i] = intensityScanPairs.get(i).getRT();
+        }
+        return val;
+    }
+
+    /**
+     * Writes the smoothData information to a file. NOTE, this method is only intended for debugging at the moment
+     * (I am using it to transfer the data to R more easily where it's easier to plot and validate the data)
+     * @throws IOException IOException from the file handling stuff
+     */
+    void writeToCSV() throws IOException {
+        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//chromatograms//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + ".csv");
+        StringBuilder sb = new StringBuilder();
+        double[] inten = this.smoothData;
+        double[] rt = this.getRT();
+        for(int i=0; i<inten.length; i++){
+            sb.append(inten[i] + "," + rt[i] + "\n");
+        }
+        writer.append(sb);
+        writer.close();
+    }
+
+    /**
+     * Smooths out the curve using a savitzky-Golay Plot (from the Michael Thomas Flanagan's java scientific library).
+     * The the number of points to use is calculated as 6*log(ArrayList.size). The smoothed data is then stored into
+     * the class variable double[] smoothData. The indices of the smoothed-minima are also stored into pointsOfInflection,
+     * replacing whatever values were there.
+     */
+    void smoothToFindMinima(){
+        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
+        //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
+        smoothData = curveSmooth.savitzkyGolay((int) (6*Math.log(this.getRT().length)));
+        //smoothData = curveSmooth.savitzkyGolayPlot(15);
+        //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
+        double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
+        pointsOfInflection.clear();
+        ArrayList temp = new ArrayList();
+        for(int i=0; i<getRT().length; i++){
+            temp.add(getRT()[i]);
+        }
+        for(int i=0; i<minima[0].length; i++){
+            pointsOfInflection.add(temp.indexOf(minima[0][i]));
+        }
+        System.out.println("test");
+    }
+
+    /**
+     * Returns the smoothed dataset as calculated in smoothToFindMinima() (using a Savitzky-Golay filter)
+     * @return the smoothed dataset as doubles
+     */
+    double[] getSmoothData() { return smoothData;}
+
+    /**
+     * This method sets the value of the inCluster flag to true. In normal use, this method should only ever need
+     * to be called once in the lifecycle of the Chromatogram object
+     */
+    void setInCluster() {
+        inCluster = true;
+    }
+
+    /**
+     * Returns the value of the inCluster flag indicating whether or not the Chromatogram is already part of a PeakCluster
+     * @return the value of the inCluster flag
+     */
+    boolean getInCluster(){
+        return inCluster;
+    }
+
 }
