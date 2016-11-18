@@ -347,9 +347,9 @@ public class Chromatogram {
      * @throws IOException IOException from the file handling stuff
      */
     void writeToCSV() throws IOException {
-        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//chromatograms//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + ".csv");
+        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//peaks//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + "rt" + this.getStartingPointRT() +".csv");
         StringBuilder sb = new StringBuilder();
-        double[] inten = this.smoothData;
+        double[] inten = this.getIntensities();
         double[] rt = this.getRT();
         for(int i=0; i<inten.length; i++){
             sb.append(inten[i] + "," + rt[i] + "\n");

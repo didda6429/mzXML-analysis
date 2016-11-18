@@ -10,22 +10,26 @@ import java.lang.Math;
  */
 public class PeakCluster {
 
-    final static double PROTON_MASS = 1.007276;
+    final static double NEUTRON_MASS = 1.00866491588;
 
-    private double protonMassPpm;
+    private double protonMassPpmAbove;
+    private double protonMassPpmBelow;
     private ArrayList<Chromatogram> chromatograms; //the individual chromatograms which make up the cluster
     private ArrayList<Chromatogram> tempChroma;
     private int charge; //in normal use, this should only ever be 1 or 2
+    private int startingPointIndex;
 
     public PeakCluster(Chromatogram startingPoint, double ppm){
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
-        setProtonMassPpm(ppm);
+        setProtonMassPpmAbove(ppm);
+        setProtonMassPpmBelow(ppm);
         checkCharge(startingPoint);
         checkAboveOrBelow(startingPoint,false);
         for(int i = tempChroma.size(); i>0; i--){
             chromatograms.add(tempChroma.get(i-1));
         }
+        startingPointIndex = chromatograms.size();
         chromatograms.add(startingPoint);
         tempChroma.clear();
         checkAboveOrBelow(startingPoint,true);
@@ -52,8 +56,10 @@ public class PeakCluster {
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(previous)) {
-                if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpm/charge && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
+                //if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > protonMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
+                if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove /charge && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                     if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
+                    //if(Math.abs(RT - chromatogram.getStartingPointRT()) < RT*0.05){  //This statement still needs work
                         temp.add(chromatogram);
                     }
                 }
@@ -66,7 +72,7 @@ public class PeakCluster {
         } else if(temp.size()==0) {
             return 1;
         } else {
-            return 2;
+            throw new IllegalArgumentException();
         }
     }
 
@@ -103,7 +109,8 @@ public class PeakCluster {
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(startingPoint)) {
-                if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpm/2) {
+                //if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > protonMassPpmBelow/2) {
+                if(Math.abs(mz-chromatogram.getMeanMZ())<protonMassPpmAbove/2){
                     if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                         temp.add(chromatogram);
                     }
@@ -116,7 +123,7 @@ public class PeakCluster {
             charge = 1;
             /*for (Chromatogram chromatogram : Main.chromatograms){
                 if(!chromatogram.equals(startingPoint)) {
-                    if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpm) {
+                    if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove) {
                         if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                             temp.add(chromatogram);
                         }
@@ -134,9 +141,11 @@ public class PeakCluster {
      * Calculates and sets the value of the proton mass within a given tolerance (ppm)
      * @param ppm the tolerance to use
      */
-    private void setProtonMassPpm(double ppm){
-        protonMassPpm = PROTON_MASS + (PROTON_MASS/1e6)*ppm;
+    private void setProtonMassPpmAbove(double ppm){
+        protonMassPpmAbove = NEUTRON_MASS + (NEUTRON_MASS /1e6)*ppm;
     }
+
+    private void setProtonMassPpmBelow(double ppm) { protonMassPpmBelow = NEUTRON_MASS - (NEUTRON_MASS /1e6)*ppm; }
 
     /**
      * Returns the chromatograms which make up the peak cluster
@@ -149,4 +158,6 @@ public class PeakCluster {
      * @return the charge of the cluster
      */
     int getCharge() {return charge;}
+
+    int getStartingPointIndex() { return startingPointIndex;}
 }

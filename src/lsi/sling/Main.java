@@ -7,6 +7,7 @@ import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
 import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -23,7 +24,7 @@ public class Main {
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
 
-    public static void main(String[] args) throws FileParsingException {
+    public static void main(String[] args) throws FileParsingException, IOException {
 
         // Creating data source
         Path path = Paths.get(location);
@@ -75,12 +76,12 @@ public class Main {
         }
 
         //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
-        peakList = localPeakList(scanArrayList,spectrumArrayList,500);
+        peakList = localPeakList(scanArrayList,spectrumArrayList,1000);
 
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Chromatogram(scanArrayList,localPeak,20,1000));
+                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000));
             }
         }
 
@@ -99,20 +100,38 @@ public class Main {
 
         peakClusters = new ArrayList<>();
         ArrayList doubles = new ArrayList(); //only used for testing
+        ArrayList test = new ArrayList();
 
         for (Chromatogram chromatogram : chromatograms){
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
-                peakClusters.add(new PeakCluster(chromatogram,20));
+                peakClusters.add(new PeakCluster(chromatogram,100));
             }
         }
 
-        //only used for testing
         for(int i=0; i<peakClusters.size(); i++){
             if(peakClusters.get(i).getChromatograms().size()==1){
+                System.out.println(peakClusters.get(i).getCharge() + "       " + i);
                 doubles.add(i);
             }
         }
+
+        for(Chromatogram chromatogram : chromatograms){
+            if(Math.abs(chromatogram.getStartingPointRT()-14.2)<0.5 && Math.abs(chromatogram.getMeanMZ()-426)<5)
+                test.add(chromatogram);
+        }
+        //doubles.clear();
+        /*for(PeakCluster peakCluster : peakClusters){
+            if(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()<814.8&&peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()>814.5){
+                doubles.add(peakCluster);
+            }
+        }*/
+
+        /*for(Chromatogram chromatogram : chromatograms){
+            if(chromatogram.getMeanMZ()<814.8&&chromatogram.getMeanMZ()>814.5){
+                chromatogram.writeToCSV();
+            }
+        }*/
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
