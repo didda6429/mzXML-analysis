@@ -54,7 +54,7 @@ public class Chromatogram {
      * @param thresh        The threshold to determine the end points of the peak
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh) throws FileParsingException {
+    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int minimumSize) throws FileParsingException {
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
@@ -72,32 +72,47 @@ public class Chromatogram {
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
             System.out.println(createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1));
         }
-        startingPointIndex = intensityScanPairsBelow.size();
-        if(intensityScanPairs.size()>4) {
-            smoothToFindMinima();
-        } else {
-            findLocalMinima();
-        }
-        isobars = new ArrayList<>();
-        pointsOfInflection.add(0,0);
-        pointsOfInflection.add(pointsOfInflection.size(),intensityScanPairs.size());
-        if(intensityScanPairs.size()>4 && pointsOfInflection.size()>2) { //only performs the following code if the data has been smoothed
-            for (int i = 0; i < pointsOfInflection.size()-1; i++) {
-                ArrayList<LocalPeak> pairs = new ArrayList<>();
-                double[] smooth = new double[pointsOfInflection.get(i+1)-pointsOfInflection.get(i)];
-                int x = 0;
-                for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i+1); j++) {
-                    pairs.add(intensityScanPairs.get(j));
-                    smooth[x] = smoothData[j];
-                    x++;
-                }
-                //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
-                isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+        if(intensityScanPairs.size()>minimumSize) {
+            startingPointIndex = intensityScanPairsBelow.size();
+            if (intensityScanPairs.size() > 4) {
+                smoothToFindMinima();
+            } else {
+                findLocalMinima();
             }
+            isobars = new ArrayList<>();
+            pointsOfInflection.add(0, 0);
+            pointsOfInflection.add(pointsOfInflection.size(), intensityScanPairs.size());
+            if (intensityScanPairs.size() > 4 && pointsOfInflection.size() > 2) { //only performs the following code if the data has been smoothed
+                for (int i = 0; i < pointsOfInflection.size() - 1; i++) {
+                    ArrayList<LocalPeak> pairs = new ArrayList<>();
+                    double[] smooth = new double[pointsOfInflection.get(i + 1) - pointsOfInflection.get(i)];
+                    int x = 0;
+                    for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i + 1); j++) {
+                        pairs.add(intensityScanPairs.get(j));
+                        smooth[x] = smoothData[j];
+                        x++;
+                    }
+                    //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
+                    isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+                }
+            } else {
+                isobars.add(new Isobar(intensityScanPairs, meanMZ, tolerance, threshold, smoothData, inCluster));
+            }
+            System.out.println("test");
         } else {
-            isobars.add(new Isobar(intensityScanPairs,meanMZ,tolerance,threshold,smoothData,inCluster));
+            intensityScanPairs = null;
+            intensityScanPairsBelow = null;
+            pointsOfInflection = null;
+            isobars = null;
+            meanMZ = Double.parseDouble(null);
+            tolerance = Double.parseDouble(null);
+            threshold = Double.parseDouble(null); //used to define noise to signal ratio
+            startingPointIndex = Integer.parseInt(null); //index of the max peak within the ArrayList (max intensity)
+            startingPointRT = Double.parseDouble(null);
+            startingPointIntensity = Double.parseDouble(null);
+            smoothData = null;
+            inCluster = Boolean.parseBoolean(null);
         }
-        System.out.println("test");
     }
 
     /**
