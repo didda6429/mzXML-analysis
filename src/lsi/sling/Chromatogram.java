@@ -196,6 +196,26 @@ public class Chromatogram {
     }
 
     /**
+     * This method applies a set of rules to the chromatogram object to determine if it is valid.
+     * NOTE - The list of rules still needs development. At the moment, it only checks :
+     *  - more than 5 data points
+     *  - maxIntensity/minIntensity > 5
+     * @return true if it is valid, otherwise false
+     */
+    boolean isValidChromatogram(){
+        if(intensityScanPairs.size()>5){
+            ArrayList<LocalPeak> tempList = intensityScanPairs;
+            Collections.sort(tempList);
+            double maxIntensity = tempList.get(0).getIntensity();
+            double minIntensity = tempList.get(tempList.size()-1).getIntensity();
+            if(maxIntensity/minIntensity>5){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Finds the local minima within the peak (based on intensities). This information is directly related to separating
      * isobars. Note: This method finds the minimas by comparing adjacent intensities and therefore picks up a lot of
      * noise. It has been replaced by the smoothToFindMinima method but is retained for potential use in cases where

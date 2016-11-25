@@ -87,6 +87,14 @@ public class Main {
             }
         }
 
+        //removes invalid chromatograms based on the method in the Chromatogram class
+        for(int i=0; i<chromatograms.size(); i++){
+            if(!chromatograms.get(i).isValidChromatogram()){
+                chromatograms.remove(i);
+            }
+        }
+
+
         System.out.println(chromatograms.get(0).getIntensityScanPairs().size());
 
         /*for(int i=0; i<chromatograms.size(); i++) {
