@@ -23,8 +23,8 @@ public class Main {
     public static ArrayList<Chromatogram> chromatograms;
     public static ArrayList<PeakCluster> peakClusters;
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    //static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
+    static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
 
     public static void main(String[] args) throws FileParsingException, IOException {
 

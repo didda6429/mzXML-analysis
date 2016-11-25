@@ -72,7 +72,6 @@ public class Chromatogram {
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
             System.out.println(createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1));
         }
-        if(intensityScanPairs.size()>minimumSize) {
             startingPointIndex = intensityScanPairsBelow.size();
             if (intensityScanPairs.size() > 4) {
                 smoothToFindMinima();
@@ -99,20 +98,6 @@ public class Chromatogram {
                 isobars.add(new Isobar(intensityScanPairs, meanMZ, tolerance, threshold, smoothData, inCluster));
             }
             System.out.println("test");
-        } else {
-            intensityScanPairs = null;
-            intensityScanPairsBelow = null;
-            pointsOfInflection = null;
-            isobars = null;
-            meanMZ = Double.parseDouble(null);
-            tolerance = Double.parseDouble(null);
-            threshold = Double.parseDouble(null); //used to define noise to signal ratio
-            startingPointIndex = Integer.parseInt(null); //index of the max peak within the ArrayList (max intensity)
-            startingPointRT = Double.parseDouble(null);
-            startingPointIntensity = Double.parseDouble(null);
-            smoothData = null;
-            inCluster = Boolean.parseBoolean(null);
-        }
     }
 
     /**

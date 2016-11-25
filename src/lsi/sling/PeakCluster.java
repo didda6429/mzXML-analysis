@@ -20,6 +20,7 @@ public class PeakCluster {
     private int startingPointIndex;
 
     public PeakCluster(Chromatogram startingPoint, double ppm){
+        //Main.chromatograms.get(Main.chromatograms.indexOf(startingPoint)).setInCluster();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
         setProtonMassPpmAbove(ppm);
@@ -41,12 +42,13 @@ public class PeakCluster {
 
     /**
      * This method recursively looks for the chromatograms adjacent to the starting point which can then be arranged
-     * into the Peak Cluster
+     * into the Peak Cluster. If multiple chromatograms are found, the one closest to the
      * @param previous The starting point used in the previous iteration of the recursive loop
      * @param above Whether to look above (high mz) or below (lower mz) the starting point. A value of true is interpreted
      *              as look above whilst a value of false is interpreted as look below
      * @return If the operation completed succesfully it returns 1, otherwise (if more than 1 usable isotope is found in
      * the same place --> should not be possible which means it's a bug) it returns 2
+     * @throws IllegalArgumentException if the number of valid peaks it finds is nonsensical (negative or not a number or something silly)
      */
     private int checkAboveOrBelow(Chromatogram previous, boolean above){
         double RT = previous.getStartingPointRT();
@@ -71,6 +73,17 @@ public class PeakCluster {
             return checkAboveOrBelow(temp.get(0), above);
         } else if(temp.size()==0) {
             return 1;
+        } else if(temp.size()>1) {
+            double minDistance = Math.abs(temp.get(0).getMeanMZ()-(previous.getMeanMZ()+NEUTRON_MASS));
+            int index = 0;
+            for(int i=1; i<temp.size(); i++){
+                if(Math.abs(temp.get(0).getMeanMZ()-(previous.getMeanMZ()+NEUTRON_MASS))<minDistance){
+                    index = i;
+                }
+            }
+            Main.chromatograms.get(Main.chromatograms.indexOf(temp.get(index))).setInCluster();
+            tempChroma.add(temp.get(index));
+            return checkAboveOrBelow(temp.get(0), above);
         } else {
             throw new IllegalArgumentException();
         }
