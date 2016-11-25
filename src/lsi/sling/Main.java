@@ -83,7 +83,7 @@ public class Main {
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000));
+                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000,10)); //requires 10 points to form a chromatogram
             }
         }
 
