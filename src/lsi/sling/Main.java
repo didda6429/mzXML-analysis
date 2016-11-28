@@ -87,6 +87,13 @@ public class Main {
             }
         }
 
+        ArrayList test = new ArrayList();
+
+        for(Chromatogram chromatogram : chromatograms){
+            if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
+                test.add(chromatogram);
+        }
+
         //removes invalid chromatograms based on the method in the Chromatogram class
         for(int i=0; i<chromatograms.size(); i++){
             if(!chromatograms.get(i).isValidChromatogram()){
@@ -110,12 +117,12 @@ public class Main {
 
         peakClusters = new ArrayList<>();
         ArrayList doubles = new ArrayList(); //only used for testing
-        ArrayList test = new ArrayList();
+//        ArrayList test = new ArrayList();
 
         for (Chromatogram chromatogram : chromatograms){
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
-                peakClusters.add(new PeakCluster(chromatogram,100));
+                peakClusters.add(new PeakCluster(chromatogram,20));
             }
         }
 
@@ -126,10 +133,10 @@ public class Main {
             }
         }
 
-        for(Chromatogram chromatogram : chromatograms){
-            if(Math.abs(chromatogram.getStartingPointRT()-14.2)<0.5 && Math.abs(chromatogram.getMeanMZ()-426)<5)
-                test.add(chromatogram);
-        }
+//        for(Chromatogram chromatogram : chromatograms){
+//            if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
+//                test.add(chromatogram);
+//        }
         //doubles.clear();
         /*for(PeakCluster peakCluster : peakClusters){
             if(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()<814.8&&peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()>814.5){
@@ -137,11 +144,13 @@ public class Main {
             }
         }*/
 
-        /*for(Chromatogram chromatogram : chromatograms){
-            if(chromatogram.getMeanMZ()<814.8&&chromatogram.getMeanMZ()>814.5){
+        for(Chromatogram chromatogram : chromatograms){
+            if(chromatogram.getMeanMZ()<521.5&&chromatogram.getMeanMZ()>521){
                 chromatogram.writeToCSV();
             }
-        }*/
+        }
+
+
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);

@@ -1,8 +1,11 @@
 package lsi.sling;
 
 import java.util.ArrayList;
-
 import java.lang.Math;
+
+import org.apache.commons.math3.exception.DimensionMismatchException;
+import org.apache.commons.math3.exception.MathIllegalArgumentException;
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 /**
  * This Class represents a peak cluster (i.e. a peak along with it's isotopes).
@@ -12,8 +15,8 @@ public class PeakCluster {
 
     final static double NEUTRON_MASS = 1.00866491588;
 
-    private double protonMassPpmAbove;
-    private double protonMassPpmBelow;
+    private double neutronMassPpmAbove;
+    private double neutronMassPpmBelow;
     private ArrayList<Chromatogram> chromatograms; //the individual chromatograms which make up the cluster
     private ArrayList<Chromatogram> tempChroma;
     private int charge; //in normal use, this should only ever be 1 or 2
@@ -23,8 +26,8 @@ public class PeakCluster {
         //Main.chromatograms.get(Main.chromatograms.indexOf(startingPoint)).setInCluster();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
-        setProtonMassPpmAbove(ppm);
-        setProtonMassPpmBelow(ppm);
+        setNeutronMassPpmAbove(ppm);
+        setNeutronMassPpmBelow(ppm);
         checkCharge(startingPoint);
         checkAboveOrBelow(startingPoint,false);
         for(int i = tempChroma.size(); i>0; i--){
@@ -58,12 +61,15 @@ public class PeakCluster {
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(previous)) {
-                //if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > protonMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
-                if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove /charge && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
-                    if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
-                    //if(Math.abs(RT - chromatogram.getStartingPointRT()) < RT*0.05){  //This statement still needs work
+                //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
+                if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
+                    if (correlateChromatograms(previous, chromatogram) > 0.8) { //uses the correlation function below to determine isobars. The constant still needs to be adjusted.
                         temp.add(chromatogram);
                     }
+                    /*if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
+                    //if(Math.abs(RT - chromatogram.getStartingPointRT()) < RT*0.05){  //This statement still needs work
+                        temp.add(chromatogram);
+                    }*/
                 }
             }
         }
@@ -87,6 +93,49 @@ public class PeakCluster {
         } else {
             throw new IllegalArgumentException();
         }
+    }
+
+    /**
+     * Calculates the correlation between two chromatograms. If the ranges of the retention times aren't equal (and they
+     * usually aren't), only the overlapping datapoints are used to calculate the correlation. This method calculates the
+     * pearson correlation coefficient through the apache commons math library.
+     * @param a The first chromatogram
+     * @param b The second chromatogram
+     * @return The correlation coefficient between the two chromatograms
+     */
+    private static double correlateChromatograms(Chromatogram a, Chromatogram b){
+        double minPoint = Math.max(a.getIntensityScanPairs().get(0).getRT(),b.getIntensityScanPairs().get(0).getRT());
+        double maxPoint = Math.min(a.getIntensityScanPairs().get(a.getIntensityScanPairs().size()-1).getRT(),b.getIntensityScanPairs().get(b.getIntensityScanPairs().size()-1).getRT());
+        ArrayList aIntensities = new ArrayList();
+        for(int i=0; i<a.getIntensityScanPairs().size(); i++){
+            if(a.getIntensityScanPairs().get(i).getRT()>=minPoint && a.getIntensityScanPairs().get(i).getRT()<=maxPoint){
+                aIntensities.add(a.getIntensityScanPairs().get(i).getIntensity());
+            }
+        }
+        ArrayList bIntensities = new ArrayList();
+        for(int i=0; i<b.getIntensityScanPairs().size(); i++){
+            if(b.getIntensityScanPairs().get(i).getRT()>=minPoint && b.getIntensityScanPairs().get(i).getRT()<=maxPoint){
+                bIntensities.add(b.getIntensityScanPairs().get(i).getIntensity());
+            }
+        }
+        double[] aInten = new double[aIntensities.size()];
+        double[] bInten = new double[bIntensities.size()];
+        if(aInten.length!=bInten.length){
+            throw new DimensionMismatchException(bInten.length,aInten.length);
+        }
+        for(int i=0; i<aInten.length; i++){
+            aInten[i] = (double) aIntensities.get(i);
+            bInten[i] = (double) bIntensities.get(i);
+
+        }
+        double corr;
+        try {
+            corr = new PearsonsCorrelation().correlation(aInten, bInten);
+        } catch (MathIllegalArgumentException e){
+            //e.printStackTrace();
+            return 0; //returns 0 if the overlap is too small to calculate a correlation(less than 2 data points)
+        }
+        return corr;
     }
 
     /**
@@ -122,8 +171,8 @@ public class PeakCluster {
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(startingPoint)) {
-                //if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > protonMassPpmBelow/2) {
-                if(Math.abs(mz-chromatogram.getMeanMZ())<protonMassPpmAbove/2){
+                //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
+                if(Math.abs(mz-chromatogram.getMeanMZ())< neutronMassPpmAbove /2){
                     if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                         temp.add(chromatogram);
                     }
@@ -136,7 +185,7 @@ public class PeakCluster {
             charge = 1;
             /*for (Chromatogram chromatogram : Main.chromatograms){
                 if(!chromatogram.equals(startingPoint)) {
-                    if (Math.abs(mz - chromatogram.getMeanMZ()) < protonMassPpmAbove) {
+                    if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove) {
                         if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                             temp.add(chromatogram);
                         }
@@ -154,11 +203,11 @@ public class PeakCluster {
      * Calculates and sets the value of the proton mass within a given tolerance (ppm)
      * @param ppm the tolerance to use
      */
-    private void setProtonMassPpmAbove(double ppm){
-        protonMassPpmAbove = NEUTRON_MASS + (NEUTRON_MASS /1e6)*ppm;
+    private void setNeutronMassPpmAbove(double ppm){
+        neutronMassPpmAbove = NEUTRON_MASS + (NEUTRON_MASS /1e6)*ppm;
     }
 
-    private void setProtonMassPpmBelow(double ppm) { protonMassPpmBelow = NEUTRON_MASS - (NEUTRON_MASS /1e6)*ppm; }
+    private void setNeutronMassPpmBelow(double ppm) { neutronMassPpmBelow = NEUTRON_MASS - (NEUTRON_MASS /1e6)*ppm; }
 
     /**
      * Returns the chromatograms which make up the peak cluster

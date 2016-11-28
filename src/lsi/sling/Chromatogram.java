@@ -203,12 +203,12 @@ public class Chromatogram {
      * @return true if it is valid, otherwise false
      */
     boolean isValidChromatogram(){
-        if(intensityScanPairs.size()>5){
+        if(intensityScanPairs.size()>3){
             ArrayList<LocalPeak> tempList = intensityScanPairs;
             Collections.sort(tempList);
             double maxIntensity = tempList.get(0).getIntensity();
             double minIntensity = tempList.get(tempList.size()-1).getIntensity();
-            if(maxIntensity/minIntensity>5){
+            if(maxIntensity/minIntensity>3){
                 return true;
             }
         }
