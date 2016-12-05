@@ -51,7 +51,8 @@ public class Chromatogram {
      * @param scanList      An ArrayList of all the scans (as IScan objects)
      * @param startingPoint The LocalPeak to use as the starting point for the larger peak
      * @param tol           The tolerance (in ppm) to account for the jitter
-     * @param thresh        The threshold to determine the end points of the peak
+     * @param thresh        The threshold to determine the end points of the peak. This value is used to determine the
+     *                      validity of a chromatogram (within the scope of a peak cluster)
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
     public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int minimumSize) throws FileParsingException {
@@ -200,16 +201,19 @@ public class Chromatogram {
      * NOTE - The list of rules still needs development. At the moment, it only checks :
      *  - more than 5 data points
      *  - maxIntensity/minIntensity > 5
+     *  - maxIntensity > 5* threshold
      * @return true if it is valid, otherwise false
      */
     boolean isValidChromatogram(){
-        if(intensityScanPairs.size()>3){
+        if(intensityScanPairs.size()>5){
             ArrayList<LocalPeak> tempList = intensityScanPairs;
             Collections.sort(tempList);
             double maxIntensity = tempList.get(0).getIntensity();
             double minIntensity = tempList.get(tempList.size()-1).getIntensity();
-            if(maxIntensity/minIntensity>3){
-                return true;
+            if(maxIntensity/minIntensity>5){
+                if(maxIntensity>5*threshold) {
+                    return true;
+                }
             }
         }
         return false;

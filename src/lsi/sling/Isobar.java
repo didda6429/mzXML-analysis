@@ -52,7 +52,7 @@ public class Isobar {
         maxIntensity = scanPairs.get(index).getIntensity();
         smoothData = smooth;
         inCluster = cluster;
-        isValid = calculateIsValid(10); //play around with this constant
+        isValid = calculateIsValid(5); //play around with this constant
     }
 
     /**

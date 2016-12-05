@@ -79,7 +79,7 @@ public class Main {
         }
 
         //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
-        peakList = localPeakList(scanArrayList,spectrumArrayList,1000);
+        peakList = localPeakList(scanArrayList,spectrumArrayList,500);
 
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
@@ -88,12 +88,12 @@ public class Main {
             }
         }
 
-        ArrayList test = new ArrayList();
+        //ArrayList test = new ArrayList();
 
-        for(Chromatogram chromatogram : chromatograms){
+        /*for(Chromatogram chromatogram : chromatograms){
             if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
                 test.add(chromatogram);
-        }
+        }*/
 
         //removes invalid chromatograms based on the method in the Chromatogram class
         /*for(int i=0; i<chromatograms.size(); i++){
