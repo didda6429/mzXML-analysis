@@ -160,7 +160,9 @@ public class Main {
             }
         }*/
 
-
+        for(int i=0; i<10; i++){
+            chromatograms.get(i).plotSmoothToFindMinima();
+        }
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);

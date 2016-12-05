@@ -391,7 +391,7 @@ public class Chromatogram {
     void smoothToFindMinima(){
         CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
-        smoothData = curveSmooth.savitzkyGolay((int) (6*Math.log(this.getRT().length)));
+        smoothData = curveSmooth.savitzkyGolay((int) (10*Math.log(this.getRT().length)));
         //smoothData = curveSmooth.savitzkyGolayPlot(15);
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
         double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
@@ -404,6 +404,13 @@ public class Chromatogram {
             pointsOfInflection.add(temp.indexOf(minima[0][i]));
         }
         System.out.println("test");
+    }
+
+    //This method is for testing only
+    void plotSmoothToFindMinima(){
+        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
+        //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
+        double[] temp = curveSmooth.savitzkyGolayPlot((int) (6*Math.log(this.getRT().length)));
     }
 
     /**
