@@ -1,4 +1,5 @@
 package lsi.sling;
+
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -95,11 +96,11 @@ public class Main {
         }
 
         //removes invalid chromatograms based on the method in the Chromatogram class
-        for(int i=0; i<chromatograms.size(); i++){
+        /*for(int i=0; i<chromatograms.size(); i++){
             if(!chromatograms.get(i).isValidChromatogram()){
                 chromatograms.remove(i);
             }
-        }
+        }*
 
 
         System.out.println(chromatograms.get(0).getIntensityScanPairs().size());
@@ -126,6 +127,15 @@ public class Main {
             }
         }
 
+        //removes clusters (as invalid) if the starting chromatogram is an invalid chromatogram. The validity of the
+        //chromatogram is determined by the isValidChromatogram() method in the Chromatogram class
+        for(int i=0; i<peakClusters.size(); i++){
+            if(!peakClusters.get(i).getChromatograms().get(peakClusters.get(i).getStartingPointIndex()).isValidChromatogram()){
+                peakClusters.remove(i);
+                i--;
+            }
+        }
+
         for(int i=0; i<peakClusters.size(); i++){
             if(peakClusters.get(i).getChromatograms().size()==1){
                 System.out.println(peakClusters.get(i).getCharge() + "       " + i);
@@ -144,11 +154,11 @@ public class Main {
             }
         }*/
 
-        for(Chromatogram chromatogram : chromatograms){
+        /*for(Chromatogram chromatogram : chromatograms){
             if(chromatogram.getMeanMZ()<521.5&&chromatogram.getMeanMZ()>521){
                 chromatogram.writeToCSV();
             }
-        }
+        }*/
 
 
 
