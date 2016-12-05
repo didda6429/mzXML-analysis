@@ -54,7 +54,7 @@ public class Chromatogram {
      * @param thresh        The threshold to determine the end points of the peak
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh) throws FileParsingException {
+    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int minimumSize) throws FileParsingException {
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
@@ -72,32 +72,32 @@ public class Chromatogram {
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
             System.out.println(createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1));
         }
-        startingPointIndex = intensityScanPairsBelow.size();
-        if(intensityScanPairs.size()>4) {
-            smoothToFindMinima();
-        } else {
-            findLocalMinima();
-        }
-        isobars = new ArrayList<>();
-        pointsOfInflection.add(0,0);
-        pointsOfInflection.add(pointsOfInflection.size(),intensityScanPairs.size());
-        if(intensityScanPairs.size()>4 && pointsOfInflection.size()>2) { //only performs the following code if the data has been smoothed
-            for (int i = 0; i < pointsOfInflection.size()-1; i++) {
-                ArrayList<LocalPeak> pairs = new ArrayList<>();
-                double[] smooth = new double[pointsOfInflection.get(i+1)-pointsOfInflection.get(i)];
-                int x = 0;
-                for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i+1); j++) {
-                    pairs.add(intensityScanPairs.get(j));
-                    smooth[x] = smoothData[j];
-                    x++;
-                }
-                //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
-                isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+            startingPointIndex = intensityScanPairsBelow.size();
+            if (intensityScanPairs.size() > 4) {
+                smoothToFindMinima();
+            } else {
+                findLocalMinima();
             }
-        } else {
-            isobars.add(new Isobar(intensityScanPairs,meanMZ,tolerance,threshold,smoothData,inCluster));
-        }
-        System.out.println("test");
+            isobars = new ArrayList<>();
+            pointsOfInflection.add(0, 0);
+            pointsOfInflection.add(pointsOfInflection.size(), intensityScanPairs.size());
+            if (intensityScanPairs.size() > 4 && pointsOfInflection.size() > 2) { //only performs the following code if the data has been smoothed
+                for (int i = 0; i < pointsOfInflection.size() - 1; i++) {
+                    ArrayList<LocalPeak> pairs = new ArrayList<>();
+                    double[] smooth = new double[pointsOfInflection.get(i + 1) - pointsOfInflection.get(i)];
+                    int x = 0;
+                    for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i + 1); j++) {
+                        pairs.add(intensityScanPairs.get(j));
+                        smooth[x] = smoothData[j];
+                        x++;
+                    }
+                    //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
+                    isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+                }
+            } else {
+                isobars.add(new Isobar(intensityScanPairs, meanMZ, tolerance, threshold, smoothData, inCluster));
+            }
+            System.out.println("test");
     }
 
     /**
@@ -193,6 +193,26 @@ public class Chromatogram {
             }
         }
         return new LocalPeak(increment, maxIntensity, spec.getMZs()[maxIndex], RT);
+    }
+
+    /**
+     * This method applies a set of rules to the chromatogram object to determine if it is valid.
+     * NOTE - The list of rules still needs development. At the moment, it only checks :
+     *  - more than 5 data points
+     *  - maxIntensity/minIntensity > 5
+     * @return true if it is valid, otherwise false
+     */
+    boolean isValidChromatogram(){
+        if(intensityScanPairs.size()>3){
+            ArrayList<LocalPeak> tempList = intensityScanPairs;
+            Collections.sort(tempList);
+            double maxIntensity = tempList.get(0).getIntensity();
+            double minIntensity = tempList.get(tempList.size()-1).getIntensity();
+            if(maxIntensity/minIntensity>3){
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -347,9 +367,9 @@ public class Chromatogram {
      * @throws IOException IOException from the file handling stuff
      */
     void writeToCSV() throws IOException {
-        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//chromatograms//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + ".csv");
+        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//peaks//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + "rt" + this.getStartingPointRT() +".csv");
         StringBuilder sb = new StringBuilder();
-        double[] inten = this.smoothData;
+        double[] inten = this.getIntensities();
         double[] rt = this.getRT();
         for(int i=0; i<inten.length; i++){
             sb.append(inten[i] + "," + rt[i] + "\n");
