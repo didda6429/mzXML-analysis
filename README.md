@@ -7,4 +7,6 @@ algorithms for:
 from raw mzXML files.
 
 ##Peak Picking
-So far, only a protoype peak picking algorithm has been implemented. It works recursively to extract an entire ion chromatograms from all significant starting points (based on fixed threshold). To avoid excessive data, a flag is used to ensure each chromatogram is only selected once (and not multiple times). It also finds the turning points in the chromatograms to help seperate isobars by using a Savitzky-Golay filter to remove some of the noise.
+So far, a recursive peak picking algorithm has been designed and implemented. This algorithm recursively creates chromatograms and then collates them into peak clusters. Valid peak clusters are then determined by checking the validity of the chromatogram which was used to form it (the starting point). Invalid chromatograms are discarded. 
+
+The software also has functionality to identify isobars within chromatograms. It does this by using a Savitzky-Golay filter to smooth the data before finding the minima. NOTE: This functionality still needs some work to ensure it's reliability.
