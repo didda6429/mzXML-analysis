@@ -45,7 +45,7 @@ public class PeakCluster {
 
     /**
      * This method recursively looks for the chromatograms adjacent to the starting point which can then be arranged
-     * into the Peak Cluster. If multiple chromatograms are found, the one closest to the
+     * into the Peak Cluster. If multiple chromatograms are found, the one closest to the expected theoretical value is used
      * @param previous The starting point used in the previous iteration of the recursive loop
      * @param above Whether to look above (high mz) or below (lower mz) the starting point. A value of true is interpreted
      *              as look above whilst a value of false is interpreted as look below
@@ -57,7 +57,7 @@ public class PeakCluster {
         double RT = previous.getStartingPointRT();
         double inten = previous.getStartingPointIntensity();
         double mz = previous.getMeanMZ();
-        ArrayList<Chromatogram> temp = new ArrayList();
+        ArrayList<Chromatogram> temp = new ArrayList<>();
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(previous)) {
@@ -160,7 +160,7 @@ public class PeakCluster {
      * This method checks the charge of a peak cluster by looking for peaks adjacent to the starting point at the mz+-0.5
      * locations. If it finds something, the charge is set to 2 and if it finds nothing the charge is set to 1. Note,
      * if the charge!=2, it does NOT explicitly look for another chromatogram at the mz+-1 locations. However, this
-     * functionality does exist but is currently commented out of the code to improve performance.
+     * functionality does exist but is currently commented out of the code to improve performance and reliability.
      * @param startingPoint the starting Chromatogram
      */
     private void checkCharge(Chromatogram startingPoint){

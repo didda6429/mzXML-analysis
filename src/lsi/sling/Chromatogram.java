@@ -2,13 +2,9 @@ package lsi.sling;
 
 import flanagan.analysis.CurveSmooth;
 
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.util.DoubleArray;
-import org.omg.CORBA.CharHolder;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
-import umich.ms.fileio.filetypes.mzxml.jaxb.Scan;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -204,7 +200,7 @@ public class Chromatogram {
      *  - maxIntensity > 5* threshold
      * @return true if it is valid, otherwise false
      */
-    boolean isValidChromatogram(){
+    boolean isValidStartingPoint(){
         if(intensityScanPairs.size()>5){
             ArrayList<LocalPeak> tempList = intensityScanPairs;
             Collections.sort(tempList);
