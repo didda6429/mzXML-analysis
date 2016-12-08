@@ -52,20 +52,19 @@ public class Isobar {
         maxIntensity = scanPairs.get(index).getIntensity();
         smoothData = smooth;
         inCluster = cluster;
-        isValid = calculateIsValid(10); //play around with this constant
+        isValid = calculateIsValid(5); //play around with this constant
     }
 
     /**
      * Method to determine if a isobar contains a valid peak. It does this by comparing the maxima with the minimum value
      * of the endpoints to (try to) determine if the peak is just noise or not.
-     * @param threshold
+     * @param thresh
      * @return
      */
-    private boolean calculateIsValid(double threshold){
+    private boolean calculateIsValid(double thresh){
         double max = maxIntensity;
         double min = Math.min(intensityScanPairs.get(0).getIntensity(),intensityScanPairs.get(intensityScanPairs.size()-1).getIntensity());
-        double temp = max/min;
-        if(temp>threshold){
+        if(max/min>thresh){
             return true;
         } else {
             return false;

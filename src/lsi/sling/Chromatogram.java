@@ -2,13 +2,9 @@ package lsi.sling;
 
 import flanagan.analysis.CurveSmooth;
 
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.util.DoubleArray;
-import org.omg.CORBA.CharHolder;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
-import umich.ms.fileio.filetypes.mzxml.jaxb.Scan;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -51,7 +47,8 @@ public class Chromatogram {
      * @param scanList      An ArrayList of all the scans (as IScan objects)
      * @param startingPoint The LocalPeak to use as the starting point for the larger peak
      * @param tol           The tolerance (in ppm) to account for the jitter
-     * @param thresh        The threshold to determine the end points of the peak
+     * @param thresh        The threshold to determine the end points of the peak. This value is used to determine the
+     *                      validity of a chromatogram (within the scope of a peak cluster)
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
     public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int minimumSize) throws FileParsingException {
@@ -200,16 +197,19 @@ public class Chromatogram {
      * NOTE - The list of rules still needs development. At the moment, it only checks :
      *  - more than 5 data points
      *  - maxIntensity/minIntensity > 5
+     *  - maxIntensity > 5* threshold
      * @return true if it is valid, otherwise false
      */
-    boolean isValidChromatogram(){
-        if(intensityScanPairs.size()>3){
+    boolean isValidStartingPoint(){
+        if(intensityScanPairs.size()>5){
             ArrayList<LocalPeak> tempList = intensityScanPairs;
             Collections.sort(tempList);
             double maxIntensity = tempList.get(0).getIntensity();
             double minIntensity = tempList.get(tempList.size()-1).getIntensity();
-            if(maxIntensity/minIntensity>3){
-                return true;
+            if(maxIntensity/minIntensity>5){
+                if(maxIntensity>5*threshold) {
+                    return true;
+                }
             }
         }
         return false;
@@ -387,7 +387,7 @@ public class Chromatogram {
     void smoothToFindMinima(){
         CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
-        smoothData = curveSmooth.savitzkyGolay((int) (6*Math.log(this.getRT().length)));
+        smoothData = curveSmooth.savitzkyGolay((int) (10*Math.log(this.getRT().length)));
         //smoothData = curveSmooth.savitzkyGolayPlot(15);
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
         double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
@@ -400,6 +400,13 @@ public class Chromatogram {
             pointsOfInflection.add(temp.indexOf(minima[0][i]));
         }
         System.out.println("test");
+    }
+
+    //This method is for testing only
+    void plotSmoothToFindMinima(){
+        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
+        //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
+        double[] temp = curveSmooth.savitzkyGolayPlot((int) (6*Math.log(this.getRT().length)));
     }
 
     /**

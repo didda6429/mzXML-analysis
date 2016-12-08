@@ -11,7 +11,9 @@ import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.TreeMap;
+import java.util.Collections;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
 //"C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML"
@@ -79,7 +81,7 @@ public class Main {
         }
 
         //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
-        peakList = localPeakList(scanArrayList,spectrumArrayList,1000);
+        peakList = localPeakList(scanArrayList,spectrumArrayList,500);
 
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
@@ -88,16 +90,16 @@ public class Main {
             }
         }
 
-        ArrayList test = new ArrayList();
+        //ArrayList test = new ArrayList();
 
-        for(Chromatogram chromatogram : chromatograms){
+        /*for(Chromatogram chromatogram : chromatograms){
             if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
                 test.add(chromatogram);
-        }
+        }*/
 
         //removes invalid chromatograms based on the method in the Chromatogram class
         /*for(int i=0; i<chromatograms.size(); i++){
-            if(!chromatograms.get(i).isValidChromatogram()){
+            if(!chromatograms.get(i).isValidStartingPoint()){
                 chromatograms.remove(i);
             }
         }*
@@ -128,9 +130,9 @@ public class Main {
         }
 
         //removes clusters (as invalid) if the starting chromatogram is an invalid chromatogram. The validity of the
-        //chromatogram is determined by the isValidChromatogram() method in the Chromatogram class
+        //chromatogram is determined by the isValidStartingPoint() method in the Chromatogram class
         for(int i=0; i<peakClusters.size(); i++){
-            if(!peakClusters.get(i).getChromatograms().get(peakClusters.get(i).getStartingPointIndex()).isValidChromatogram()){
+            if(!peakClusters.get(i).getChromatograms().get(peakClusters.get(i).getStartingPointIndex()).isValidStartingPoint()){
                 peakClusters.remove(i);
                 i--;
             }
@@ -160,7 +162,9 @@ public class Main {
             }
         }*/
 
-
+        /*for(int i=0; i<10; i++){
+            chromatograms.get(i).plotSmoothToFindMinima();
+        }*/
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
