@@ -4,7 +4,7 @@ package lsi.sling;
  * This class represents an adduct which could be a peak.
  * @author Adithya Diddapur
  */
-public class Adduct {
+public class Adduct implements Comparable<Adduct>{
 
     private String ionName;
     private String ionMassFunction;
@@ -75,5 +75,16 @@ public class Adduct {
 
     public String getCompoundSystemicName() {
         return compoundSystemicName;
+    }
+
+    @Override
+    public int compareTo(Adduct o) {
+        int val = 0;
+        if(this.getResultMZ()>o.getResultMZ()){
+            val = -1;
+        } else if (this.getResultMZ()<o.getResultMZ()){
+            val = 1;
+        }
+        return val;
     }
 }

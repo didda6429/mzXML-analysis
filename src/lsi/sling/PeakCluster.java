@@ -1,8 +1,21 @@
 package lsi.sling;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.lang.Math;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+import com.opencsv.CSVReader;
+import expr.Expr;
+import expr.Parser;
+import expr.SyntaxException;
+import expr.Variable;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
@@ -21,9 +34,13 @@ public class PeakCluster {
     private ArrayList<Chromatogram> tempChroma;
     private int charge; //in normal use, this should only ever be 1 or 2
     private int startingPointIndex;
+    List<Adduct> adductList;
+    private double targetMZAbove;
+    private double targetMZBelow;
 
     public PeakCluster(Chromatogram startingPoint, double ppm){
         //Main.chromatograms.get(Main.chromatograms.indexOf(startingPoint)).setInCluster();
+        adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
         setNeutronMassPpmAbove(ppm);
@@ -40,7 +57,8 @@ public class PeakCluster {
         for(Chromatogram chromatogram : tempChroma){
             chromatograms.add(chromatogram);
         }
-        System.out.println("test");
+        targetMZAbove = chromatograms.get(startingPointIndex).getMeanMZ() + (chromatograms.get(startingPointIndex).getMeanMZ()/1e6)*ppm;
+        targetMZBelow = chromatograms.get(startingPointIndex).getMeanMZ() - (chromatograms.get(startingPointIndex).getMeanMZ()/1e6)*ppm;
     }
 
     /**
@@ -222,4 +240,79 @@ public class PeakCluster {
     int getCharge() {return charge;}
 
     int getStartingPointIndex() { return startingPointIndex;}
+
+    List<Adduct> findAdducts() throws IOException {
+        List<Adduct> temp = Collections.synchronizedList(new ArrayList());
+        //ArrayList temp = new ArrayList();
+        File adductFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv");
+        File compoundFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv");
+        CSVReader adductReader = new CSVReader(new FileReader(adductFile));
+        //CSVReader compoundReader = new CSVReader(new FileReader(compoundFile));
+        String[] nextLineCompound;
+
+        //ExecutorService executor = Executors.newCachedThreadPool();
+        ExecutorService executor = Executors.newWorkStealingPool();
+
+        Iterator<String[]> adductIterator = adductReader.iterator();
+        //ArrayList<Double> expressions = new ArrayList();
+        while(adductIterator.hasNext()){
+            String[] adductInfo = adductIterator.next();
+            String expression = adductInfo[2];
+            String ionName = adductInfo[1]; //this line works
+            if(!expression.equals("Ion mass")) {
+                double ionMass = Double.parseDouble(adductInfo[5]); //this line works
+                String icharge = adductInfo[3]; //this line works
+                icharge = (icharge.charAt(icharge.length()-1) + icharge); //this line works
+                icharge = icharge.substring(0,icharge.length()-1); //this line works
+                int ionCharge = Integer.parseInt(icharge); //this line works
+                if(ionCharge==charge) {
+                    CSVReader compoundReader = null;
+                    compoundReader = new CSVReader(new FileReader(compoundFile));
+                    while ((nextLineCompound = compoundReader.readNext()) != null) {
+                        if (!nextLineCompound[0].equals("")) {
+                            String massString = nextLineCompound[1];
+                            String compoundFormula = nextLineCompound[0]; //this line works
+                            String compoundCommonName = nextLineCompound[2]; //this line works
+                            String compoundSystemicName = nextLineCompound[3]; //this line works
+                            if (!massString.equals("exactMass")) {
+                                Runnable task = () -> {
+                                    //String icharge = adductInfo[3];
+                                    //icharge = (icharge.charAt(icharge.length()-1) + icharge);
+                                    //icharge = icharge.substring(0,icharge.length()-1);
+                                    Expr expr = null;
+                                    try {
+                                        expr = Parser.parse(expression);
+                                    } catch (SyntaxException e) {
+                                        e.printStackTrace();
+                                    }
+                                    Variable M = Variable.make("M");
+                                    M.setValue(Double.parseDouble(massString));
+                                    //temp.add(new Adduct(adductInfo[1],expression,Double.parseDouble(adductInfo[5]),Integer.parseInt(adductInfo[3]),Double.parseDouble(massString),expr.value(),compoundInfo[0],compoundInfo[2],compoundInfo[3]));
+                                    //temp.add(expr.value());
+                                    temp.add(new Adduct(ionName, expression, ionMass, ionCharge, Double.parseDouble(massString), expr.value(), compoundFormula, compoundCommonName, compoundSystemicName));
+                                    //System.out.println(expr.value()); //this line does NOT work
+                                };
+
+                                executor.submit(task);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        executor.shutdown();
+//        for(int i=0; i<temp.size(); i++){
+//            if(temp.get(i).getResultMZ()>targetMZAbove||temp.get(i).getResultMZ()<targetMZBelow){
+//                temp.remove(i);
+//                i--;
+//            }
+//        }
+        for(Iterator<Adduct> i = temp.iterator(); i.hasNext();){
+            Adduct a = i.next();
+            if(a.getResultMZ()>targetMZAbove||a.getResultMZ()<targetMZBelow){
+                i.remove();
+            }
+        }
+        return temp;
+    }
 }

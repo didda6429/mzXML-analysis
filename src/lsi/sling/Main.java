@@ -168,8 +168,10 @@ public class Main {
             chromatograms.get(i).plotSmoothToFindMinima();
         }*/
         double time1 = System.currentTimeMillis()-time;
-        List temp = adductDatabase.createDatabase();
+        List temp = adductDatabase.createListOfAdducts();
+        Collections.sort(temp);
 
+        peakClusters.get(0).adductList = peakClusters.get(0).findAdducts();
         time = System.currentTimeMillis()-time;
         System.out.println(time);
         System.out.println("test");
