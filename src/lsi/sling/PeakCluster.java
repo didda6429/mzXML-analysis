@@ -38,7 +38,7 @@ public class PeakCluster {
     private double targetMZAbove;
     private double targetMZBelow;
 
-    public PeakCluster(Chromatogram startingPoint, double ppm){
+    public PeakCluster(Chromatogram startingPoint, double ppm) throws IOException {
         //Main.chromatograms.get(Main.chromatograms.indexOf(startingPoint)).setInCluster();
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
@@ -46,14 +46,14 @@ public class PeakCluster {
         setNeutronMassPpmAbove(ppm);
         setNeutronMassPpmBelow(ppm);
         checkCharge(startingPoint);
-        checkAboveOrBelow(startingPoint,false);
+        checkAboveOrBelow(startingPoint,false, ppm);
         for(int i = tempChroma.size(); i>0; i--){
             chromatograms.add(tempChroma.get(i-1));
         }
         startingPointIndex = chromatograms.size();
         chromatograms.add(startingPoint);
         tempChroma.clear();
-        checkAboveOrBelow(startingPoint,true);
+        checkAboveOrBelow(startingPoint,true, ppm);
         for(Chromatogram chromatogram : tempChroma){
             chromatograms.add(chromatogram);
         }
@@ -71,7 +71,7 @@ public class PeakCluster {
      * the same place --> should not be possible which means it's a bug) it returns 2
      * @throws IllegalArgumentException if the number of valid peaks it finds is nonsensical (negative or not a number or something silly)
      */
-    private int checkAboveOrBelow(Chromatogram previous, boolean above){
+    private int checkAboveOrBelow(Chromatogram previous, boolean above, double ppm){
         double RT = previous.getStartingPointRT();
         double inten = previous.getStartingPointIntensity();
         double mz = previous.getMeanMZ();
@@ -80,7 +80,7 @@ public class PeakCluster {
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(previous)) {
                 //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
-                if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
+                if (Math.abs(Math.abs(mz - chromatogram.getMeanMZ()) - neutronMassPpmAbove /charge) < (chromatogram.getMeanMZ()/1e6)*ppm && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                     if (correlateChromatograms(previous, chromatogram) > 0.8) { //uses the correlation function below to determine isobars. The constant still needs to be adjusted.
                         temp.add(chromatogram);
                     }
@@ -94,7 +94,7 @@ public class PeakCluster {
         if(temp.size()==1){
             Main.chromatograms.get(Main.chromatograms.indexOf(temp.get(0))).setInCluster();
             tempChroma.add(temp.get(0));
-            return checkAboveOrBelow(temp.get(0), above);
+            return checkAboveOrBelow(temp.get(0), above, ppm);
         } else if(temp.size()==0) {
             return 1;
         } else if(temp.size()>1) {
@@ -107,7 +107,7 @@ public class PeakCluster {
             }
             Main.chromatograms.get(Main.chromatograms.indexOf(temp.get(index))).setInCluster();
             tempChroma.add(temp.get(index));
-            return checkAboveOrBelow(temp.get(0), above);
+            return checkAboveOrBelow(temp.get(0), above, ppm);
         } else {
             throw new IllegalArgumentException();
         }
@@ -241,78 +241,13 @@ public class PeakCluster {
 
     int getStartingPointIndex() { return startingPointIndex;}
 
-    List<Adduct> findAdducts() throws IOException {
-        List<Adduct> temp = Collections.synchronizedList(new ArrayList());
-        //ArrayList temp = new ArrayList();
-        File adductFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv");
-        File compoundFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv");
-        CSVReader adductReader = new CSVReader(new FileReader(adductFile));
-        //CSVReader compoundReader = new CSVReader(new FileReader(compoundFile));
-        String[] nextLineCompound;
-
-        //ExecutorService executor = Executors.newCachedThreadPool();
-        ExecutorService executor = Executors.newWorkStealingPool();
-
-        Iterator<String[]> adductIterator = adductReader.iterator();
-        //ArrayList<Double> expressions = new ArrayList();
-        while(adductIterator.hasNext()){
-            String[] adductInfo = adductIterator.next();
-            String expression = adductInfo[2];
-            String ionName = adductInfo[1]; //this line works
-            if(!expression.equals("Ion mass")) {
-                double ionMass = Double.parseDouble(adductInfo[5]); //this line works
-                String icharge = adductInfo[3]; //this line works
-                icharge = (icharge.charAt(icharge.length()-1) + icharge); //this line works
-                icharge = icharge.substring(0,icharge.length()-1); //this line works
-                int ionCharge = Integer.parseInt(icharge); //this line works
-                if(ionCharge==charge) {
-                    CSVReader compoundReader = null;
-                    compoundReader = new CSVReader(new FileReader(compoundFile));
-                    while ((nextLineCompound = compoundReader.readNext()) != null) {
-                        if (!nextLineCompound[0].equals("")) {
-                            String massString = nextLineCompound[1];
-                            String compoundFormula = nextLineCompound[0]; //this line works
-                            String compoundCommonName = nextLineCompound[2]; //this line works
-                            String compoundSystemicName = nextLineCompound[3]; //this line works
-                            if (!massString.equals("exactMass")) {
-                                Runnable task = () -> {
-                                    //String icharge = adductInfo[3];
-                                    //icharge = (icharge.charAt(icharge.length()-1) + icharge);
-                                    //icharge = icharge.substring(0,icharge.length()-1);
-                                    Expr expr = null;
-                                    try {
-                                        expr = Parser.parse(expression);
-                                    } catch (SyntaxException e) {
-                                        e.printStackTrace();
-                                    }
-                                    Variable M = Variable.make("M");
-                                    M.setValue(Double.parseDouble(massString));
-                                    //temp.add(new Adduct(adductInfo[1],expression,Double.parseDouble(adductInfo[5]),Integer.parseInt(adductInfo[3]),Double.parseDouble(massString),expr.value(),compoundInfo[0],compoundInfo[2],compoundInfo[3]));
-                                    //temp.add(expr.value());
-                                    temp.add(new Adduct(ionName, expression, ionMass, ionCharge, Double.parseDouble(massString), expr.value(), compoundFormula, compoundCommonName, compoundSystemicName));
-                                    //System.out.println(expr.value()); //this line does NOT work
-                                };
-
-                                executor.submit(task);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        executor.shutdown();
-//        for(int i=0; i<temp.size(); i++){
-//            if(temp.get(i).getResultMZ()>targetMZAbove||temp.get(i).getResultMZ()<targetMZBelow){
-//                temp.remove(i);
-//                i--;
-//            }
-//        }
-        for(Iterator<Adduct> i = temp.iterator(); i.hasNext();){
+    List<Adduct> findAdducts(List adductList) throws IOException {
+        for(Iterator<Adduct> i = adductList.iterator(); i.hasNext();){
             Adduct a = i.next();
             if(a.getResultMZ()>targetMZAbove||a.getResultMZ()<targetMZBelow){
                 i.remove();
             }
         }
-        return temp;
+        return adductList;
     }
 }
