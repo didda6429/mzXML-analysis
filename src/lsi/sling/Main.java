@@ -8,10 +8,12 @@ import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
 import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 
+import javax.script.ScriptException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.Collections;
 
@@ -29,7 +31,7 @@ public class Main {
     static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
 
-    public static void main(String[] args) throws FileParsingException, IOException {
+    public static void main(String[] args) throws FileParsingException, IOException, ScriptException {
 
         // Creating data source
         Path path = Paths.get(location);
@@ -165,6 +167,8 @@ public class Main {
         /*for(int i=0; i<10; i++){
             chromatograms.get(i).plotSmoothToFindMinima();
         }*/
+        double time1 = System.currentTimeMillis()-time;
+        List temp = adductDatabase.createDatabase();
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
