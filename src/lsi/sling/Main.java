@@ -8,14 +8,13 @@ import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
 import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 
-import javax.script.ScriptException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.Collections;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
 //"C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML"
@@ -31,7 +30,7 @@ public class Main {
     static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
 
-    public static void main(String[] args) throws FileParsingException, IOException, ScriptException {
+    public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException {
 
         // Creating data source
         Path path = Paths.get(location);
@@ -168,10 +167,38 @@ public class Main {
             chromatograms.get(i).plotSmoothToFindMinima();
         }*/
         double time1 = System.currentTimeMillis()-time;
-        List temp = adductDatabase.createListOfAdducts();
-        Collections.sort(temp);
+        System.out.println(time1);
+        AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
+        ArrayList<Adduct> dat = AdductDatabase.readDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
+        //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
+        //temp = AdductDatabase.createListOfAdducts();
+        //Collections.sort(temp);
+        System.out.println(System.currentTimeMillis()-time);
 
-        peakClusters.get(0).adductList = peakClusters.get(0).findAdducts();
+        //Iterator<PeakCluster> iterator = peakClusters.iterator();
+
+        /*while(iterator.hasNext()){
+            PeakCluster cluster = iterator.next();
+            List<Adduct> sameCharge = temp.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+            cluster.findAdducts(sameCharge);
+        }*/
+
+//        ExecutorService executorService = Executors.newWorkStealingPool();
+//        while(iterator.hasNext()){
+//            PeakCluster cluster = iterator.next();
+//            List<Adduct> sameCharge = temp.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+//            Runnable task = () -> {
+//                try {
+//                    cluster.findAdducts(sameCharge);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            };
+//            executorService.submit(task);
+//        }
+//        executorService.shutdown();
+
+        //peakClusters.get(0).adductList = peakClusters.get(0).findAdducts();
         time = System.currentTimeMillis()-time;
         System.out.println(time);
         System.out.println("test");

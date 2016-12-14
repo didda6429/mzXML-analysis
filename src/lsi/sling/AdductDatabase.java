@@ -1,6 +1,7 @@
 package lsi.sling;
 
 import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
 import expr.Expr; //expr library from github.com/darius/expr taken on 12/12/2016 @ 15:10
 import expr.Parser;
 import expr.SyntaxException;
@@ -10,9 +11,7 @@ import org.apache.commons.math3.analysis.function.Add;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -23,18 +22,56 @@ import java.util.concurrent.Executors;
 /**
  * Created by lsiv67 on 12/12/2016.
  */
-public class adductDatabase {
+public class AdductDatabase {
 
     /**
-     * This method reads in the csv files (containing ion and compound information)  and combine them. To do this, it
+     * Reads in the data from the file which was created in @createDatabase(String location)
+     * @param location The location of the file created in @createDatabase(String location)
+     * @return An ArrayList contining the data from the file
+     * @throws IOException If there is an error reading from the file
+     * @throws ClassNotFoundException If there is an error converting the object to an ArrayList<Adduct>
+     */
+    static ArrayList<Adduct> readDatabase(String location) throws IOException, ClassNotFoundException {
+        FileInputStream fin = new FileInputStream(new File(location));
+        ObjectInputStream ois = new ObjectInputStream(fin);
+        ArrayList<Adduct> data = (ArrayList<Adduct>)ois.readObject();
+        fin.close();
+        return data;
+    }
+
+    /**
+     * This method checks to see if a file containing the output list from createListOfAdducts already exists at the
+     * given location. If it does not exist, the method calls createListOfAdducts and stores it in a new file at the
+     * given location
+     * @param finalLocation The address of the file to check for
+     * @return 1 if the file already exists. 0 if a new file was created
+     * @throws IOException If there is an error creating the file
+     */
+    static int createDatabase(String finalLocation) throws IOException {
+        if(!new File(finalLocation).exists()){
+            List<Adduct> data = createListOfAdducts();
+            ArrayList<Adduct> dat = new ArrayList<Adduct>(data);
+            FileOutputStream fos = new FileOutputStream(new File(finalLocation));
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(dat);
+            oos.close();
+            return 0;
+        } else {
+            return 1; //returns 1 if the file already exists
+        }
+    }
+
+    /**
+     * This method reads in the "raw" csv files (containing ion and compound information)  and combines them. To do this, it
      * parses the expression in the ion file and uses that to calculate the resultant m/z for each combination. This data
      * is then stored in a List of Adduct objects. Note that this method executes the method concurrently for each possibility
      * to speed up processing time
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
      */
-    static List createListOfAdducts() throws IOException {
-        List temp = Collections.synchronizedList(new ArrayList());
+    static List<Adduct> createListOfAdducts() throws IOException {
+        //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
+        List<Adduct> temp = Collections.synchronizedList(new ArrayList());
         //ArrayList temp = new ArrayList();
         File adductFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv");
         File compoundFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv");
@@ -42,8 +79,8 @@ public class adductDatabase {
         //CSVReader compoundReader = new CSVReader(new FileReader(compoundFile));
         String[] nextLineCompound;
 
-        //ExecutorService executor = Executors.newCachedThreadPool();
-        ExecutorService executor = Executors.newWorkStealingPool();
+        ExecutorService executor = Executors.newCachedThreadPool();
+        //ExecutorService executor = Executors.newWorkStealingPool();
 
         Iterator<String[]> adductIterator = adductReader.iterator();
         //ArrayList<Double> expressions = new ArrayList();

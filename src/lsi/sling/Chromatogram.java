@@ -94,7 +94,6 @@ public class Chromatogram {
             } else {
                 isobars.add(new Isobar(intensityScanPairs, meanMZ, tolerance, threshold, smoothData, inCluster));
             }
-            System.out.println("test");
     }
 
     /**
@@ -399,7 +398,6 @@ public class Chromatogram {
         for(int i=0; i<minima[0].length; i++){
             pointsOfInflection.add(temp.indexOf(minima[0][i]));
         }
-        System.out.println("test");
     }
 
     //This method is for testing only

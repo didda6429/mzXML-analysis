@@ -1,10 +1,13 @@
 package lsi.sling;
 
+import java.io.Serializable;
+import java.util.DoubleSummaryStatistics;
+
 /**
  * This class represents an adduct which could be a peak.
  * @author Adithya Diddapur
  */
-public class Adduct implements Comparable<Adduct>{
+public class Adduct implements Comparable<Adduct>, Serializable{
 
     private String ionName;
     private String ionMassFunction;
@@ -39,6 +42,25 @@ public class Adduct implements Comparable<Adduct>{
         compoundFormula = cFormula;
         compoundCommonName = cCommonName;
         compoundSystemicName = cSystemicName;
+    }
+
+    /**
+     * Creates a String[] containing all of the data from a particular object. This method is used when writing the List
+     * of objects to a file in AdductDatabase.createDatabase(String)
+     * @return A String[] of length 9 containing the information
+     */
+    String[] toStringArray(){
+        String[] array = new String[9];
+        array[0] = ionName;
+        array[1] = ionMassFunction;
+        array[2] = Double.toString(ionMass);
+        array[3] = Integer.toString(ionCharge);
+        array[4] = Double.toString(compoundExactMass);
+        array[5] = Double.toString(resultMZ);
+        array[6] = compoundFormula;
+        array[7] = compoundCommonName;
+        array[8] = compoundSystemicName;
+        return array;
     }
 
     public String getIonName() {
