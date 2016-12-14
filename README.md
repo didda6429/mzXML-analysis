@@ -7,6 +7,15 @@ algorithms for:
 from raw mzXML files.
 
 ##Peak Picking
-So far, a recursive peak picking algorithm has been designed and implemented. This algorithm recursively creates chromatograms and then collates them into peak clusters. Valid peak clusters are then determined by checking the validity of the chromatogram which was used to form it (the starting point). Invalid chromatograms are discarded. 
+So far, a recursive peak picking algorithm has been designed and implemented. This algorithm recursively creates 
+chromatograms and then collates them into peak clusters. Valid peak clusters are then determined by checking the validity
+ of the chromatogram which was used to form it (the starting point). Invalid chromatograms are discarded. 
 
-The software also has functionality to identify isobars within chromatograms. It does this by using a Savitzky-Golay filter to smooth the data before finding the minima. NOTE: This functionality is still experimental and it's reliability is NOT guaranteed.
+The software also has functionality to identify isobars within chromatograms. It does this by using a Savitzky-Golay 
+filter to smooth the data before finding the minima. NOTE: This functionality is still experimental and it's reliability
+is NOT guaranteed.
+
+##Peak Identification
+The aim for this software is to be able to identify which compounds could correspond to which peaks. The first step in 
+achieving this is to identify possible MS1 peaks from a pre-existing list of compounds and ions. This basic functionality
+ has been implemented. HOWEVER, it is still very slow and memory intensive so it needs a lot of optimisation.

@@ -169,7 +169,11 @@ public class Main {
         double time1 = System.currentTimeMillis()-time;
         System.out.println(time1);
         AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
+        //AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data");
         ArrayList<Adduct> dat = AdductDatabase.readDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
+        for(PeakCluster cluster : peakClusters){
+            cluster.findAdducts(dat.stream().filter(x -> x.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+        }
         //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
         //temp = AdductDatabase.createListOfAdducts();
         //Collections.sort(temp);

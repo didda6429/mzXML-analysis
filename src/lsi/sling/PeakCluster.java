@@ -246,12 +246,14 @@ public class PeakCluster {
      * @param adducts The list of Adducts of the same charge
      */
     void findAdducts(List adducts) {
+        ArrayList<Adduct> temp = new ArrayList<>();
         for(Iterator<Adduct> i = adducts.iterator(); i.hasNext();){
             Adduct a = i.next();
-            if(a.getResultMZ()>targetMZAbove||a.getResultMZ()<targetMZBelow){
-                i.remove();
+            if(a.getResultMZ()<targetMZAbove&&a.getResultMZ()>targetMZBelow){
+                temp.add(a);
             }
+            if(a.getResultMZ()>targetMZAbove) break;
         }
-        this.adductList = adducts;
+        this.adductList = temp;
     }
 }
