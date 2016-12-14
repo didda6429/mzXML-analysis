@@ -11,9 +11,9 @@ import umich.ms.fileio.filetypes.mzxml.MZXMLFile;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"

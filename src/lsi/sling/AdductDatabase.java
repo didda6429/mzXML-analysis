@@ -1,16 +1,11 @@
 package lsi.sling;
 
 import com.opencsv.CSVReader;
-import com.opencsv.CSVWriter;
-import expr.Expr; //expr library from github.com/darius/expr taken on 12/12/2016 @ 15:10
+import expr.Expr;
 import expr.Parser;
 import expr.SyntaxException;
 import expr.Variable;
-import org.apache.commons.math3.analysis.function.Add;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;

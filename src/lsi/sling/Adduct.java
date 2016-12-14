@@ -1,7 +1,6 @@
 package lsi.sling;
 
 import java.io.Serializable;
-import java.util.DoubleSummaryStatistics;
 
 /**
  * This class represents an adduct which could be a peak.
