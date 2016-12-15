@@ -1,5 +1,7 @@
 package lsi.sling;
 
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Multimaps;
 import com.opencsv.CSVReader;
 import expr.Expr;
 import expr.Parser;
@@ -7,34 +9,34 @@ import expr.SyntaxException;
 import expr.Variable;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class handles the database of possible adducts. Specifically, it deals with creating, reading, and writing the
- * database. Note that all of the methods in this class are static because there is no currently no significant optimisation
- * to be made here through abstraction (each method will only be called a maximum of once during the life of the program)
+ * database. In order to increase performance, when a database is created, all of the adducts are written into different
+ * files based on their charge. This allows the read function to only read data for a specific charge, which allows the
+ * program to only read in the relevant adducts. This optimisation Also significantly improves memory management.
  * @author Adithya Diddapur
  */
 public class AdductDatabase {
 
     /**
-     * Reads in the data from the file which was created in @createDatabase(String location)
-     * @param location The location of the file created in @createDatabase(String location)
+     * Reads in the data from the file which was created in @createDatabase(String folder)
+     * @param folder The folder of the file created in @createDatabase(String folder)
      * @return An ArrayList contining the data from the file
      * @throws IOException If there is an error reading from the file
      * @throws ClassNotFoundException If there is an error converting the object to an ArrayList<Adduct>
      */
-    static ArrayList<Adduct> readDatabase(String location) throws IOException, ClassNotFoundException {
-        System.out.println("Reading in Database");
-        FileInputStream fin = new FileInputStream(new File(location));
+    static List<Adduct> readDatabase(String folder, int charge) throws IOException, ClassNotFoundException {
+        System.out.println("Reading in Database for charge = " + charge);
+        FileInputStream fin = new FileInputStream(new File(folder + File.separator + charge + ".adduct"));
         ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(fin));
-        ArrayList<Adduct> data = (ArrayList<Adduct>)ois.readObject();
+        List<Adduct> data = (List<Adduct>) ois.readObject();
         fin.close();
-        System.out.println("Finished Reading Database");
+        System.out.println("Finished Reading Database for charge = " + charge);
         return data;
     }
 
@@ -42,20 +44,32 @@ public class AdductDatabase {
      * This method checks to see if a file containing the output list from createListOfAdducts already exists at the
      * given location. If it does not exist, the method calls createListOfAdducts and stores it in a new file at the
      * given location
-     * @param finalLocation The address of the file to check for
+     * @param folder The address of the file to check for
      * @return 1 if the file already exists. 0 if a new file was created
      * @throws IOException If there is an error creating the file
      */
-    static int createDatabase(String finalLocation) throws IOException {
-        if(!new File(finalLocation).exists()){
+    static int createDatabase(String folder) throws IOException, InterruptedException {
+        if(!new File(folder).exists()){
             System.out.println("Database does not exist");
             System.out.println("Creating Database now");
+            new File(folder).mkdirs();
             List<Adduct> data = createListOfAdducts();
-            ArrayList<Adduct> dat = new ArrayList(data);
-            FileOutputStream fos = new FileOutputStream(new File(finalLocation));
-            ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(fos));
-            oos.writeObject(dat);
-            oos.close();
+            ListMultimap<Integer,Adduct> multimap = Multimaps.index(
+                    data,
+                    adduct -> adduct.getIonCharge()
+            );
+            int[] keys = Arrays.stream(multimap.keySet().toArray()).mapToInt(i -> (int)i).toArray();
+            for(int key : keys){
+                File file = new File(folder + File.separator + key + ".adduct");
+                file.createNewFile();
+                FileOutputStream fos = new FileOutputStream(file);
+                ObjectOutputStream oos = new ObjectOutputStream(fos);
+                oos.writeObject(multimap.get(key));
+                oos.close();
+            }
+            data = null;
+            multimap = null;
+            System.gc();
             System.out.println("Finished Creating Database");
             return 0;
         } else {
@@ -72,13 +86,13 @@ public class AdductDatabase {
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
      */
-    static private List<Adduct> createListOfAdducts() throws IOException {
+    static private List<Adduct> createListOfAdducts() throws IOException, InterruptedException {
         //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
         List<Adduct> temp = Collections.synchronizedList(new ArrayList<Adduct>());
         //ArrayList temp = new ArrayList();
         File adductFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv");
         File compoundFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv");
-        CSVReader adductReader = new CSVReader(new FileReader(adductFile));
+        CSVReader adductReader = new CSVReader(new BufferedReader(new FileReader(adductFile)));
         //CSVReader compoundReader = new CSVReader(new FileReader(compoundFile));
         String[] nextLineCompound;
 
@@ -96,7 +110,7 @@ public class AdductDatabase {
                 icharge = icharge.substring(0, icharge.length() - 1); //this line works
                 int ionCharge = Integer.parseInt(icharge); //this line works
                 CSVReader compoundReader = null;
-                compoundReader = new CSVReader(new FileReader(compoundFile));
+                compoundReader = new CSVReader(new BufferedReader(new FileReader(compoundFile)));
                 while ((nextLineCompound = compoundReader.readNext()) != null) {
                     if (!nextLineCompound[0].equals("")) {
                         String massString = nextLineCompound[1];
@@ -131,6 +145,8 @@ public class AdductDatabase {
             }
         }
         executor.shutdown();
+        executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        System.gc();
         return temp;
     }
 }
