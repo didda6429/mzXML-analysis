@@ -1,7 +1,6 @@
 package lsi.sling;
 
 import flanagan.analysis.CurveSmooth;
-
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
@@ -9,8 +8,7 @@ import umich.ms.fileio.exceptions.FileParsingException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.lang.Math;
-import java.util.*;
+import java.util.Collections;
 
 
 /**
@@ -27,7 +25,7 @@ public class Chromatogram {
     private ArrayList<LocalPeak> intensityScanPairs;
     private ArrayList<LocalPeak> intensityScanPairsBelow;
     private ArrayList<Integer> pointsOfInflection;
-    ArrayList<Isobar> isobars;
+    private ArrayList<Isobar> isobars;
     private double meanMZ;
     private double tolerance;
     private double threshold; //used to define noise to signal ratio
@@ -61,13 +59,13 @@ public class Chromatogram {
         threshold = thresh;
         inCluster = false;
         meanMZ = startingPoint.getMZ();
-        System.out.println(createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1));
+        createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1);
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
             intensityScanPairs.add(intensityScanPairsBelow.get(i - 1));
         }
         intensityScanPairs.add(startingPoint);
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
-            System.out.println(createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1));
+            createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1);
         }
             startingPointIndex = intensityScanPairsBelow.size();
             if (intensityScanPairs.size() > 4) {
@@ -177,7 +175,7 @@ public class Chromatogram {
      * @param RT        The RT of the scan which is used to create a LocalPeak object containing the relevant information
      * @return A LocalPeak object containing all of the relvant information
      */
-    static LocalPeak maxIntWithinTol(ISpectrum spec, double mean, double tol, int increment, double RT) {
+    private static LocalPeak maxIntWithinTol(ISpectrum spec, double mean, double tol, int increment, double RT) {
         int[] temp = spec.findMzIdxsWithinPpm(mean, tol);   //according to source code tolerance is calculated as (mean/1e6)*tol
         double[] inten = spec.getIntensities();
         int maxIndex = 0;
@@ -371,7 +369,7 @@ public class Chromatogram {
         double[] inten = this.getIntensities();
         double[] rt = this.getRT();
         for(int i=0; i<inten.length; i++){
-            sb.append(inten[i] + "," + rt[i] + "\n");
+            sb.append(inten[i]).append(",").append(rt[i]).append("\n");
         }
         writer.append(sb);
         writer.close();
@@ -391,7 +389,7 @@ public class Chromatogram {
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
         double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
         pointsOfInflection.clear();
-        ArrayList temp = new ArrayList();
+        ArrayList<Double> temp = new ArrayList();
         for(int i=0; i<getRT().length; i++){
             temp.add(getRT()[i]);
         }
@@ -426,6 +424,14 @@ public class Chromatogram {
      * @return the value of the inCluster flag
      */
     boolean getInCluster(){
+        return inCluster;
+    }
+
+    public ArrayList<Isobar> getIsobars() {
+        return isobars;
+    }
+
+    public boolean isInCluster() {
         return inCluster;
     }
 

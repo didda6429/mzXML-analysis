@@ -139,12 +139,12 @@ public class Main {
             }
         }
 
-        for(int i=0; i<peakClusters.size(); i++){
+        /*for(int i=0; i<peakClusters.size(); i++){
             if(peakClusters.get(i).getChromatograms().size()==1){
                 System.out.println(peakClusters.get(i).getCharge() + "       " + i);
                 doubles.add(i);
             }
-        }
+        }*/
 
 //        for(Chromatogram chromatogram : chromatograms){
 //            if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
@@ -203,6 +203,17 @@ public class Main {
 //        executorService.shutdown();
 
         //peakClusters.get(0).adductList = peakClusters.get(0).findAdducts();
+        ArrayList<PeakCluster> test = new ArrayList();
+
+        /*for(PeakCluster cluster: peakClusters){
+            for(Adduct adduct : cluster.getAdductList()){
+                if(!adduct.getIonName().equals("M+H ")) {
+                    test.add(cluster);
+                    break;
+                }
+            }
+        }*/
+
         time = System.currentTimeMillis()-time;
         System.out.println(time);
         System.out.println("test");

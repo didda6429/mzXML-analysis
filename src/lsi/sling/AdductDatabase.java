@@ -9,13 +9,15 @@ import expr.Variable;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Created by lsiv67 on 12/12/2016.
+ * This class handles the database of possible adducts. Specifically, it deals with creating, reading, and writing the
+ * database. Note that all of the methods in this class are static because there is no currently no significant optimisation
+ * to be made here through abstraction (each method will only be called a maximum of once during the life of the program)
+ * @author Adithya Diddapur
  */
 public class AdductDatabase {
 
@@ -27,10 +29,12 @@ public class AdductDatabase {
      * @throws ClassNotFoundException If there is an error converting the object to an ArrayList<Adduct>
      */
     static ArrayList<Adduct> readDatabase(String location) throws IOException, ClassNotFoundException {
+        System.out.println("Reading in Database");
         FileInputStream fin = new FileInputStream(new File(location));
-        ObjectInputStream ois = new ObjectInputStream(fin);
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(fin));
         ArrayList<Adduct> data = (ArrayList<Adduct>)ois.readObject();
         fin.close();
+        System.out.println("Finished Reading Database");
         return data;
     }
 
@@ -44,14 +48,18 @@ public class AdductDatabase {
      */
     static int createDatabase(String finalLocation) throws IOException {
         if(!new File(finalLocation).exists()){
+            System.out.println("Database does not exist");
+            System.out.println("Creating Database now");
             List<Adduct> data = createListOfAdducts();
-            ArrayList<Adduct> dat = new ArrayList<Adduct>(data);
+            ArrayList<Adduct> dat = new ArrayList(data);
             FileOutputStream fos = new FileOutputStream(new File(finalLocation));
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(fos));
             oos.writeObject(dat);
             oos.close();
+            System.out.println("Finished Creating Database");
             return 0;
         } else {
+            System.out.println("Database already exists");
             return 1; //returns 1 if the file already exists
         }
     }
@@ -64,9 +72,9 @@ public class AdductDatabase {
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
      */
-    static List<Adduct> createListOfAdducts() throws IOException {
+    static private List<Adduct> createListOfAdducts() throws IOException {
         //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
-        List<Adduct> temp = Collections.synchronizedList(new ArrayList());
+        List<Adduct> temp = Collections.synchronizedList(new ArrayList<Adduct>());
         //ArrayList temp = new ArrayList();
         File adductFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv");
         File compoundFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv");
@@ -77,22 +85,20 @@ public class AdductDatabase {
         ExecutorService executor = Executors.newCachedThreadPool();
         //ExecutorService executor = Executors.newWorkStealingPool();
 
-        Iterator<String[]> adductIterator = adductReader.iterator();
         //ArrayList<Double> expressions = new ArrayList();
-        while(adductIterator.hasNext()){
-            String[] adductInfo = adductIterator.next();
+        for (String[] adductInfo : adductReader) {
             String expression = adductInfo[2];
             String ionName = adductInfo[1]; //this line works
-            if(!expression.equals("Ion mass")) {
+            if (!expression.equals("Ion mass")) {
                 double ionMass = Double.parseDouble(adductInfo[5]); //this line works
                 String icharge = adductInfo[3]; //this line works
-                icharge = (icharge.charAt(icharge.length()-1) + icharge); //this line works
-                icharge = icharge.substring(0,icharge.length()-1); //this line works
+                icharge = (icharge.charAt(icharge.length() - 1) + icharge); //this line works
+                icharge = icharge.substring(0, icharge.length() - 1); //this line works
                 int ionCharge = Integer.parseInt(icharge); //this line works
                 CSVReader compoundReader = null;
                 compoundReader = new CSVReader(new FileReader(compoundFile));
                 while ((nextLineCompound = compoundReader.readNext()) != null) {
-                    if(!nextLineCompound[0].equals("")) {
+                    if (!nextLineCompound[0].equals("")) {
                         String massString = nextLineCompound[1];
                         String compoundFormula = nextLineCompound[0]; //this line works
                         String compoundCommonName = nextLineCompound[2]; //this line works
@@ -103,7 +109,7 @@ public class AdductDatabase {
                                 //icharge = (icharge.charAt(icharge.length()-1) + icharge);
                                 //icharge = icharge.substring(0,icharge.length()-1);
                                 Expr expr = null;
-                                try{
+                                try {
                                     expr = Parser.parse(expression);
                                 } catch (SyntaxException e) {
                                     e.printStackTrace();
@@ -112,7 +118,9 @@ public class AdductDatabase {
                                 M.setValue(Double.parseDouble(massString));
                                 //temp.add(new Adduct(adductInfo[1],expression,Double.parseDouble(adductInfo[5]),Integer.parseInt(adductInfo[3]),Double.parseDouble(massString),expr.value(),compoundInfo[0],compoundInfo[2],compoundInfo[3]));
                                 //temp.add(expr.value());
-                                temp.add(new Adduct(ionName,expression,ionMass,ionCharge,Double.parseDouble(massString),expr.value(),compoundFormula,compoundCommonName,compoundSystemicName));
+                                if (expr != null) {
+                                    temp.add(new Adduct(ionName, expression, ionMass, ionCharge, Double.parseDouble(massString), expr.value(), compoundFormula, compoundCommonName, compoundSystemicName));
+                                }
                                 //System.out.println(expr.value()); //this line does NOT work
                             };
 
