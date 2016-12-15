@@ -6,7 +6,6 @@ import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -23,7 +22,7 @@ public class PeakCluster {
     private ArrayList<Chromatogram> tempChroma;
     private int charge; //in normal use, this should only ever be 1 or 2
     private int startingPointIndex;
-    List<Adduct> adductList;
+    private List<Adduct> adductList;
     private double targetMZAbove;
     private double targetMZBelow;
 
@@ -48,6 +47,10 @@ public class PeakCluster {
         }
         targetMZAbove = chromatograms.get(startingPointIndex).getMeanMZ() + (chromatograms.get(startingPointIndex).getMeanMZ()/1e6)*ppm;
         targetMZBelow = chromatograms.get(startingPointIndex).getMeanMZ() - (chromatograms.get(startingPointIndex).getMeanMZ()/1e6)*ppm;
+    }
+
+    public List<Adduct> getAdductList() {
+        return adductList;
     }
 
     /**
@@ -113,13 +116,13 @@ public class PeakCluster {
     private static double correlateChromatograms(Chromatogram a, Chromatogram b){
         double minPoint = Math.max(a.getIntensityScanPairs().get(0).getRT(),b.getIntensityScanPairs().get(0).getRT());
         double maxPoint = Math.min(a.getIntensityScanPairs().get(a.getIntensityScanPairs().size()-1).getRT(),b.getIntensityScanPairs().get(b.getIntensityScanPairs().size()-1).getRT());
-        ArrayList aIntensities = new ArrayList();
+        ArrayList<Double> aIntensities = new ArrayList();
         for(int i=0; i<a.getIntensityScanPairs().size(); i++){
             if(a.getIntensityScanPairs().get(i).getRT()>=minPoint && a.getIntensityScanPairs().get(i).getRT()<=maxPoint){
                 aIntensities.add(a.getIntensityScanPairs().get(i).getIntensity());
             }
         }
-        ArrayList bIntensities = new ArrayList();
+        ArrayList<Double> bIntensities = new ArrayList();
         for(int i=0; i<b.getIntensityScanPairs().size(); i++){
             if(b.getIntensityScanPairs().get(i).getRT()>=minPoint && b.getIntensityScanPairs().get(i).getRT()<=maxPoint){
                 bIntensities.add(b.getIntensityScanPairs().get(i).getIntensity());
@@ -131,8 +134,8 @@ public class PeakCluster {
             throw new DimensionMismatchException(bInten.length,aInten.length);
         }
         for(int i=0; i<aInten.length; i++){
-            aInten[i] = (double) aIntensities.get(i);
-            bInten[i] = (double) bIntensities.get(i);
+            aInten[i] = aIntensities.get(i);
+            bInten[i] = bIntensities.get(i);
 
         }
         double corr;
@@ -174,7 +177,7 @@ public class PeakCluster {
         double RT = startingPoint.getStartingPointRT();
         double inten = startingPoint.getStartingPointIntensity();
         double mz = startingPoint.getMeanMZ();
-        ArrayList temp = new ArrayList();
+        ArrayList<Chromatogram> temp = new ArrayList();
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(startingPoint)) {
@@ -203,7 +206,6 @@ public class PeakCluster {
                 charge = 1;
             }*/
         }
-        System.out.println("test");
     }
 
     /**
@@ -236,12 +238,11 @@ public class PeakCluster {
      */
     void findAdducts(List adducts) {
         ArrayList<Adduct> temp = new ArrayList<>();
-        for(Iterator<Adduct> i = adducts.iterator(); i.hasNext();){
-            Adduct a = i.next();
-            if(a.getResultMZ()<targetMZAbove&&a.getResultMZ()>targetMZBelow){
+        for (Adduct a : (Iterable<Adduct>) adducts) {
+            if (a.getResultMZ() < targetMZAbove && a.getResultMZ() > targetMZBelow) {
                 temp.add(a);
             }
-            if(a.getResultMZ()>targetMZAbove) break;
+            if (a.getResultMZ() > targetMZAbove) break;
         }
         this.adductList = temp;
     }

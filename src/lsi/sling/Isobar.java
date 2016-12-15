@@ -1,7 +1,6 @@
 package lsi.sling;
 
 import java.util.ArrayList;
-import java.lang.Math;
 
 /**
  * This class represents a isobar within a chromatogram. In normal usage, this should only ever be called from within
@@ -58,17 +57,14 @@ public class Isobar {
     /**
      * Method to determine if a isobar contains a valid peak. It does this by comparing the maxima with the minimum value
      * of the endpoints to (try to) determine if the peak is just noise or not.
-     * @param thresh
-     * @return
+     * @param thresh the ratio between the maximum and minimum to check. If the measured ratio is greater than this constant,
+     *               the isobar is considered "valid"
+     * @return true if the isobar is "valid", otherwise false
      */
     private boolean calculateIsValid(double thresh){
         double max = maxIntensity;
         double min = Math.min(intensityScanPairs.get(0).getIntensity(),intensityScanPairs.get(intensityScanPairs.size()-1).getIntensity());
-        if(max/min>thresh){
-            return true;
-        } else {
-            return false;
-        }
+        return max / min > thresh;
     }
 
     public ArrayList<LocalPeak> getIntensityScanPairs() { return intensityScanPairs;}

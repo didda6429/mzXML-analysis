@@ -3,7 +3,7 @@ package lsi.sling;
 import java.io.Serializable;
 
 /**
- * This class represents an adduct which could be a peak.
+ * This class represents an adduct.
  * @author Adithya Diddapur
  */
 public class Adduct implements Comparable<Adduct>, Serializable{
