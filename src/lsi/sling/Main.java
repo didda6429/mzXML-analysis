@@ -14,6 +14,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
@@ -30,7 +33,7 @@ public class Main {
     static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
 
-    public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException {
+    public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException, InterruptedException {
 
         // Creating data source
         Path path = Paths.get(location);
@@ -171,9 +174,21 @@ public class Main {
         AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
         //AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data");
         ArrayList<Adduct> dat = AdductDatabase.readDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
-        for(PeakCluster cluster : peakClusters){
+        /*for(PeakCluster cluster : peakClusters){
             cluster.findAdducts(dat.stream().filter(x -> x.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+        }*/
+
+        ExecutorService service = Executors.newCachedThreadPool();
+        for(PeakCluster cluster : peakClusters){
+            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+            Runnable task = () -> {
+                cluster.findAdducts(dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+            };
+            service.submit(task);
         }
+        service.shutdown();
+        service.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+
         //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
         //temp = AdductDatabase.createListOfAdducts();
         //Collections.sort(temp);
@@ -187,23 +202,7 @@ public class Main {
             cluster.findAdducts(sameCharge);
         }*/
 
-//        ExecutorService executorService = Executors.newWorkStealingPool();
-//        while(iterator.hasNext()){
-//            PeakCluster cluster = iterator.next();
-//            List<Adduct> sameCharge = temp.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
-//            Runnable task = () -> {
-//                try {
-//                    cluster.findAdducts(sameCharge);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            };
-//            executorService.submit(task);
-//        }
-//        executorService.shutdown();
-
-        //peakClusters.get(0).adductList = peakClusters.get(0).findAdducts();
-        ArrayList<PeakCluster> test = new ArrayList();
+        //ArrayList<PeakCluster> test = new ArrayList();
 
         /*for(PeakCluster cluster: peakClusters){
             for(Adduct adduct : cluster.getAdductList()){
