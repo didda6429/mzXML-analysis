@@ -1,5 +1,6 @@
 package lsi.sling;
 
+import com.google.common.collect.ArrayListMultimap;
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -32,6 +33,7 @@ public class Main {
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
+    static String dir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
 
     public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException, InterruptedException {
 
@@ -171,47 +173,23 @@ public class Main {
         }*/
         double time1 = System.currentTimeMillis()-time;
         System.out.println(time1);
-        AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
-        //AdductDatabase.createDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data");
-        ArrayList<Adduct> dat = AdductDatabase.readDatabase("C:/Users/lsiv67/Documents/mzXML Sample Data/CompleteDatabase.data");
-        /*for(PeakCluster cluster : peakClusters){
-            cluster.findAdducts(dat.stream().filter(x -> x.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
-        }*/
+        AdductDatabase.createDatabase(dir);
+
+        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
 
         ExecutorService service = Executors.newCachedThreadPool();
         for(PeakCluster cluster : peakClusters){
             //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+            if(!multimap.keySet().contains(new Integer(cluster.getCharge()))){
+                multimap.putAll(new Integer(cluster.getCharge()),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+            }
             Runnable task = () -> {
-                cluster.findAdducts(dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+                cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
             };
             service.submit(task);
         }
         service.shutdown();
         service.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-
-        //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
-        //temp = AdductDatabase.createListOfAdducts();
-        //Collections.sort(temp);
-        System.out.println(System.currentTimeMillis()-time);
-
-        //Iterator<PeakCluster> iterator = peakClusters.iterator();
-
-        /*while(iterator.hasNext()){
-            PeakCluster cluster = iterator.next();
-            List<Adduct> sameCharge = temp.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
-            cluster.findAdducts(sameCharge);
-        }*/
-
-        //ArrayList<PeakCluster> test = new ArrayList();
-
-        /*for(PeakCluster cluster: peakClusters){
-            for(Adduct adduct : cluster.getAdductList()){
-                if(!adduct.getIonName().equals("M+H ")) {
-                    test.add(cluster);
-                    break;
-                }
-            }
-        }*/
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
