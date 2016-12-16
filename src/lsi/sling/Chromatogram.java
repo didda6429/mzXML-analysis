@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IntSummaryStatistics;
 
 
 /**
@@ -49,7 +50,7 @@ public class Chromatogram {
      *                      validity of a chromatogram (within the scope of a peak cluster)
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int minimumSize) throws FileParsingException {
+    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh) throws FileParsingException {
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
@@ -59,7 +60,9 @@ public class Chromatogram {
         threshold = thresh;
         inCluster = false;
         meanMZ = startingPoint.getMZ();
-        createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1);
+        if(startingPoint.getScanNumber()>0) { //checks if the startingpoint is at the bottom of the file
+            createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1);
+        }
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
             intensityScanPairs.add(intensityScanPairsBelow.get(i - 1));
         }
@@ -79,7 +82,13 @@ public class Chromatogram {
             if (intensityScanPairs.size() > 4 && pointsOfInflection.size() > 2) { //only performs the following code if the data has been smoothed
                 for (int i = 0; i < pointsOfInflection.size() - 1; i++) {
                     ArrayList<LocalPeak> pairs = new ArrayList<>();
-                    double[] smooth = new double[pointsOfInflection.get(i + 1) - pointsOfInflection.get(i)];
+                    double[] smooth = null;
+                    try {
+                        smooth = new double[pointsOfInflection.get(i + 1) - pointsOfInflection.get(i)];
+                    } catch (NegativeArraySizeException e){
+                        e.printStackTrace();
+                        System.out.println("test");
+                    }
                     int x = 0;
                     for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i + 1); j++) {
                         pairs.add(intensityScanPairs.get(j));
@@ -137,7 +146,7 @@ public class Chromatogram {
      *                  once for each recursive iteration.
      * @param toler     The tolerance (in ppm) to account for the jitter
      * @param increment Used to iterate through one of the loops is a semi-recursive manner
-     * @return the integer 1 if the operation was carried out successfully
+     * @return the integer 1 if the operation was carried out successfully, 2 if the scans reached the end of the file
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
     private int createPeakBelow(ArrayList<IScan> scanList, double average, double toler, int increment) throws FileParsingException {
@@ -153,7 +162,11 @@ public class Chromatogram {
                 tempPeak.setIsUsed();
                 intensityScanPairsBelow.add(tempPeak);
                 Main.peakList.get(tempInt).setIsUsed();
-                return createPeakBelow(scanList, averageMZBelow(), toler, increment - 1);
+                if(increment>1) {
+                    return createPeakBelow(scanList, averageMZBelow(), toler, increment - 1);
+                } else {
+                    return 2;
+                }
             }
         }
         return 1;
@@ -388,14 +401,35 @@ public class Chromatogram {
         //smoothData = curveSmooth.savitzkyGolayPlot(15);
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
         double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
-        pointsOfInflection.clear();
+        //pointsOfInflection.clear();
         ArrayList<Double> temp = new ArrayList();
         for(int i=0; i<getRT().length; i++){
             temp.add(getRT()[i]);
         }
         for(int i=0; i<minima[0].length; i++){
-            pointsOfInflection.add(temp.indexOf(minima[0][i]));
+            pointsOfInflection.add(temp.indexOf(search(minima[0][i],this.getRT())));
         }
+    }
+
+    /**
+     * finds the value of an array which is closest to the given value. This method is used in the smoothToFindMinima()
+     * method when the position of the minima isn't exactly the same as the RT of one of the scans
+     * @param myNumber The number to compare against
+     * @param numbers The array of numbers to search in
+     * @return The closest number in the array
+     */
+    private static double search(double myNumber, double[] numbers) {
+        int idx = 0;
+        double distance = Math.abs(myNumber-numbers[0]);
+        for(int c = 1; c < numbers.length; c++){
+            double cdistance = Math.abs(myNumber-numbers[c]);
+            if(cdistance < distance){
+                idx = c;
+                distance = cdistance;
+            }
+        }
+        double theNumber = numbers[idx];
+        return theNumber;
     }
 
     //This method is for testing only

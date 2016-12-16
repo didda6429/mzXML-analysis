@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,7 +32,8 @@ public class Main {
     public static ArrayList<Chromatogram> chromatograms;
     public static ArrayList<PeakCluster> peakClusters;
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    //static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
     static String dir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
 
@@ -71,7 +73,7 @@ public class Main {
         scanArrayList = new ArrayList<>(); //ArrayList containing only the data from the scans with spectrums
         for (IScan scan : num2scanMap.values()) {
             ISpectrum spectrum = scan.getSpectrum();
-            if (spectrum != null) {
+            if (spectrum != null && scan.getMsLevel().intValue()==1) {
                 //System.out.printf("%s does NOT have a parsed spectrum\n", scan.toString());
                 //System.out.printf("%s has a parsed spectrum, it contains %d data points\n",
                 //        scan.toString(), spectrum.getMZs().length);
@@ -88,11 +90,12 @@ public class Main {
 
         //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
         peakList = localPeakList(scanArrayList,spectrumArrayList,500);
+        //double twosd = meanIntensity(peakList) + 2*standardDeviation(peakList,meanIntensity(peakList));
 
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000,10)); //requires 10 points to form a chromatogram
+                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000));
             }
         }
 
@@ -177,7 +180,7 @@ public class Main {
 
         ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
 
-        ExecutorService service = Executors.newCachedThreadPool();
+        ExecutorService executorService = Executors.newCachedThreadPool();
         for(PeakCluster cluster : peakClusters){
             //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
             if(!multimap.keySet().contains(new Integer(cluster.getCharge()))){
@@ -186,10 +189,10 @@ public class Main {
             Runnable task = () -> {
                 cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
             };
-            service.submit(task);
+            executorService.submit(task);
         }
-        service.shutdown();
-        service.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
@@ -219,5 +222,22 @@ public class Main {
         }
         Collections.sort(peakList);
         return peakList;
+    }
+
+    static double meanIntensity(ArrayList<LocalPeak> list){
+        double sum = 0;
+        for(LocalPeak peak : list){
+            sum += peak.getIntensity();
+        }
+        return sum/list.size();
+    }
+
+    static double standardDeviation(ArrayList<LocalPeak> list, double mean){
+        double sum = 0;
+        for(LocalPeak peak : list){
+            sum += (peak.getIntensity()-mean)*(peak.getIntensity()-mean);
+        }
+        sum = sum/list.size();
+        return Math.sqrt(sum);
     }
 }
