@@ -33,9 +33,19 @@ public class Main {
     public static ArrayList<PeakCluster> peakClusters;
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
     //static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
+    //static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
+    static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/7264381_RP_pos.mzXML";
+    //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/PH697085_pos_IDA.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
-    static String dir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
+    //static String dir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
+    static String dir = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/database";
+
+    //static String adductFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv";
+    //static String compoundFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv";
+    static String adductFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Adducts.csv";
+    static String compoundFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Database.csv";
+
+    static int threshold = 20000;
 
     public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException, InterruptedException {
 
@@ -89,13 +99,15 @@ public class Main {
         }
 
         //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
-        peakList = localPeakList(scanArrayList,spectrumArrayList,500);
+        peakList = localPeakList(scanArrayList,spectrumArrayList,threshold);
         //double twosd = meanIntensity(peakList) + 2*standardDeviation(peakList,meanIntensity(peakList));
 
         chromatograms = new ArrayList<>();
+        int k=0;
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000));
+                System.out.println(k++);
+                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40, threshold));
             }
         }
 
@@ -176,7 +188,7 @@ public class Main {
         }*/
         double time1 = System.currentTimeMillis()-time;
         System.out.println(time1);
-        AdductDatabase.createDatabase(dir);
+        AdductDatabase.createDatabase(dir, adductFile, compoundFile);
 
         ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
 

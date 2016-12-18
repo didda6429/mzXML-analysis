@@ -153,7 +153,7 @@ public class Chromatogram {
         ISpectrum temp = scanList.get(increment).fetchSpectrum();
         if(temp.findMzIdxsWithinPpm(average,toler)!=null) {
             LocalPeak tempPeak = maxIntWithinTol(temp, average, toler, increment, scanList.get(increment).getRt());
-            if (tempPeak.getIntensity() > threshold) {
+            if (tempPeak.getIntensity() > this.threshold) {
                 int tempInt = Main.peakList.indexOf(tempPeak);
                 if (tempInt == -1) {
                     tempPeak.setIsUsed();
