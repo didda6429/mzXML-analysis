@@ -207,6 +207,7 @@ public class Chromatogram {
      * - more than 5 data points
      * - maxIntensity/minIntensity > 5
      * - maxIntensity > 5* threshold
+     * - peak width is less than 30 seconds (0.5 units)
      *
      * @return true if it is valid, otherwise false
      */
@@ -218,7 +219,9 @@ public class Chromatogram {
             double minIntensity = tempList.get(tempList.size() - 1).getIntensity();
             if (maxIntensity / minIntensity > 5) {
                 if (maxIntensity > 5 * threshold) {
-                    return true;
+                    if(intensityScanPairs.get(intensityScanPairs.size()-1).getRT()-intensityScanPairs.get(0).getRT()<0.5){
+                        return true;
+                    }
                 }
             }
         }

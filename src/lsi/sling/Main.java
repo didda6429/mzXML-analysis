@@ -31,8 +31,8 @@ public class Main {
     public static ArrayList<Chromatogram> chromatograms;
     public static ArrayList<PeakCluster> peakClusters;
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    //static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
+    //static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
     //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/7264381_RP_pos.mzXML";
     //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/PH697085_pos_IDA.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
