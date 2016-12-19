@@ -54,6 +54,7 @@ public class AdductDatabase {
             System.out.println("Creating Database now");
             new File(folder).mkdirs();
             List<Adduct> data = createListOfAdducts(adductFile, compoundFile);
+            System.gc();
             ListMultimap<Integer,Adduct> multimap = Multimaps.index(
                     data,
                     adduct -> adduct.getIonCharge()
@@ -146,7 +147,6 @@ public class AdductDatabase {
         }
         executor.shutdown();
         executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-        System.gc();
         return temp;
     }
 }

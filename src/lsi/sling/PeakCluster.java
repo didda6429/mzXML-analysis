@@ -27,12 +27,11 @@ public class PeakCluster {
     private double targetMZBelow;
 
     public PeakCluster(Chromatogram startingPoint, double ppm) throws IOException {
-        //Main.chromatograms.get(Main.chromatograms.indexOf(startingPoint)).setInCluster();
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
-        setNeutronMassPpmAbove(ppm);
-        setNeutronMassPpmBelow(ppm);
+        neutronMassPpmAbove = ppmAbove(NEUTRON_MASS, ppm);
+        neutronMassPpmBelow = ppmBelow(NEUTRON_MASS, ppm);
         checkCharge(startingPoint);
         checkAboveOrBelow(startingPoint,false, ppm);
         for(int i = tempChroma.size(); i>0; i--){
@@ -45,8 +44,8 @@ public class PeakCluster {
         for(Chromatogram chromatogram : tempChroma){
             chromatograms.add(chromatogram);
         }
-        targetMZAbove = chromatograms.get(startingPointIndex).getMeanMZ() + (chromatograms.get(startingPointIndex).getMeanMZ()/1e6)*ppm;
-        targetMZBelow = chromatograms.get(startingPointIndex).getMeanMZ() - (chromatograms.get(startingPointIndex).getMeanMZ()/1e6)*ppm;
+        targetMZAbove = ppmAbove(chromatograms.get(startingPointIndex).getMeanMZ(), ppm);
+        targetMZBelow = ppmBelow(chromatograms.get(startingPointIndex).getMeanMZ(), ppm);
     }
 
     public List<Adduct> getAdductList() {
@@ -210,14 +209,22 @@ public class PeakCluster {
     }
 
     /**
-     * Calculates and sets the value of the proton mass within a given tolerance (ppm)
+     * Calculates the upper bound of a given value for a specific ppm window
+     * @param val the value to calculate around
      * @param ppm the tolerance to use
+     * @return the upper bound of the ppm windows
      */
-    private void setNeutronMassPpmAbove(double ppm){
-        neutronMassPpmAbove = NEUTRON_MASS + (NEUTRON_MASS /1e6)*ppm;
+    private double ppmAbove(double val,double ppm){
+        return val + (val /1e6)*ppm;
     }
 
-    private void setNeutronMassPpmBelow(double ppm) { neutronMassPpmBelow = NEUTRON_MASS - (NEUTRON_MASS /1e6)*ppm; }
+    /**
+     * Calculates the lower bound of a given value for a specific ppm window
+     * @param val the value to calculate around
+     * @param ppm the tolerance to use
+     * @return the lower bound of the ppm windows
+     */
+    private double ppmBelow(double val, double ppm) { return val - (val /1e6)*ppm; }
 
     /**
      * Returns the chromatograms which make up the peak cluster
