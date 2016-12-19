@@ -48,12 +48,12 @@ public class AdductDatabase {
      * @return 1 if the file already exists. 0 if a new file was created
      * @throws IOException If there is an error creating the file
      */
-    static int createDatabase(String folder) throws IOException, InterruptedException {
+    static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException, InterruptedException {
         if(!new File(folder).exists()){
             System.out.println("Database does not exist");
             System.out.println("Creating Database now");
             new File(folder).mkdirs();
-            List<Adduct> data = createListOfAdducts();
+            List<Adduct> data = createListOfAdducts(adductFile, compoundFile);
             ListMultimap<Integer,Adduct> multimap = Multimaps.index(
                     data,
                     adduct -> adduct.getIonCharge()
@@ -86,12 +86,12 @@ public class AdductDatabase {
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
      */
-    static private List<Adduct> createListOfAdducts() throws IOException, InterruptedException {
+    static private List<Adduct> createListOfAdducts(String adductF, String compoundF) throws IOException, InterruptedException {
         //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
         List<Adduct> temp = Collections.synchronizedList(new ArrayList<Adduct>());
         //ArrayList temp = new ArrayList();
-        File adductFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv");
-        File compoundFile = new File("C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv");
+        File adductFile = new File(adductF);
+        File compoundFile = new File(compoundF);
         CSVReader adductReader = new CSVReader(new BufferedReader(new FileReader(adductFile)));
         //CSVReader compoundReader = new CSVReader(new FileReader(compoundFile));
         String[] nextLineCompound;

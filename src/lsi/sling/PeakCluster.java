@@ -55,7 +55,8 @@ public class PeakCluster {
 
     /**
      * This method recursively looks for the chromatograms adjacent to the starting point which can then be arranged
-     * into the Peak Cluster. If multiple chromatograms are found, the one closest to the expected theoretical value is used
+     * into the Peak Cluster. Currently, it looks for chromatograms within 0.05 Da. If multiple chromatograms are found,
+     * the one closest to the expected theoretical value is used.
      * @param previous The starting point used in the previous iteration of the recursive loop
      * @param above Whether to look above (high mz) or below (lower mz) the starting point. A value of true is interpreted
      *              as look above whilst a value of false is interpreted as look below
@@ -72,7 +73,7 @@ public class PeakCluster {
         for (Chromatogram chromatogram : Main.chromatograms){
             if(!chromatogram.equals(previous)) {
                 //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
-                if (Math.abs(Math.abs(mz - chromatogram.getMeanMZ()) - neutronMassPpmAbove /charge) < (chromatogram.getMeanMZ()/1e6)*ppm && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
+                if (Math.abs(Math.abs(mz - chromatogram.getMeanMZ()) - neutronMassPpmAbove /charge) < 0.05 && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                     if (correlateChromatograms(previous, chromatogram) > 0.8) { //uses the correlation function below to determine isobars. The constant still needs to be adjusted.
                         temp.add(chromatogram);
                     }

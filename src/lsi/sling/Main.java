@@ -31,9 +31,20 @@ public class Main {
     public static ArrayList<Chromatogram> chromatograms;
     public static ArrayList<PeakCluster> peakClusters;
     //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
-    static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    //static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
+    static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
+    //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/7264381_RP_pos.mzXML";
+    //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/PH697085_pos_IDA.mzXML";
     //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
     static String dir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
+    //static String dir = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/database";
+
+    static String adductFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv";
+    static String compoundFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv";
+    //static String adductFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Adducts.csv";
+    //static String compoundFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Database.csv";
+
+    static double threshold = 0;
 
     public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException, InterruptedException {
 
@@ -71,7 +82,7 @@ public class Main {
         scanArrayList = new ArrayList<>(); //ArrayList containing only the data from the scans with spectrums
         for (IScan scan : num2scanMap.values()) {
             ISpectrum spectrum = scan.getSpectrum();
-            if (spectrum != null) {
+            if (spectrum != null && scan.getMsLevel().intValue()==1) {
                 //System.out.printf("%s does NOT have a parsed spectrum\n", scan.toString());
                 //System.out.printf("%s has a parsed spectrum, it contains %d data points\n",
                 //        scan.toString(), spectrum.getMZs().length);
@@ -87,47 +98,31 @@ public class Main {
         }
 
         //Compiles all of the significant chromatograms (intensity>threshold) accross the entire dataset into a single ArrayList for later analysis
-        peakList = localPeakList(scanArrayList,spectrumArrayList,500);
+        peakList = localPeakList(scanArrayList,spectrumArrayList);
 
+        //calculates the mean intensity of the LocalPeak objects and the value of mu+2sigma
+        double mean = meanIntensity(peakList);
+        double twosd = meanIntensity(peakList) + 2*intensityStandardDeviation(peakList,mean);
+        //sets the threshold to be mu+2sigma for future steps
+        threshold = twosd;
+        //filters the peakList so that only LocalPeaks with intensity>(mu+2sigma) are kept for further analysis
+        peakList = (ArrayList<LocalPeak>) peakList.stream().filter(localPeak -> localPeak.getIntensity()>twosd).collect(Collectors.toList());
+
+
+        //double twosd = meanIntensity(peakList) + 2*standardDeviation(peakList,meanIntensity(peakList));
+
+        //iterates through peakList (which contains LocalPeak objects) to form the chromatograms. Note that they are in descending order (of max intensity)
         chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
-                chromatograms.add(new Chromatogram(scanArrayList,localPeak,40,1000,10)); //requires 10 points to form a chromatogram
+                chromatograms.add(new Chromatogram(scanArrayList,localPeak,20, threshold));
             }
         }
 
-        //ArrayList test = new ArrayList();
 
-        /*for(Chromatogram chromatogram : chromatograms){
-            if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
-                test.add(chromatogram);
-        }*/
+        peakClusters = new ArrayList<>(); //the arraylist which contains the PeakCluster objects
 
-        //removes invalid chromatograms based on the method in the Chromatogram class
-        /*for(int i=0; i<chromatograms.size(); i++){
-            if(!chromatograms.get(i).isValidStartingPoint()){
-                chromatograms.remove(i);
-            }
-        }*
-
-
-        System.out.println(chromatograms.get(0).getIntensityScanPairs().size());
-
-        /*for(int i=0; i<chromatograms.size(); i++) {
-            if (chromatograms.get(i).getPointsOfInflection().size() >= 1) {
-                try {
-                    chromatograms.get(i).smoothToFindMinima();
-                    chromatograms.get(i).writeToCSV();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }*/
-
-        peakClusters = new ArrayList<>();
-        ArrayList doubles = new ArrayList(); //only used for testing
-//        ArrayList test = new ArrayList();
-
+        //loops through the chromatograms and forms the PeakCluster objects. Note that they are in descending order (of max intensity)
         for (Chromatogram chromatogram : chromatograms){
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
@@ -144,40 +139,13 @@ public class Main {
             }
         }
 
-        /*for(int i=0; i<peakClusters.size(); i++){
-            if(peakClusters.get(i).getChromatograms().size()==1){
-                System.out.println(peakClusters.get(i).getCharge() + "       " + i);
-                doubles.add(i);
-            }
-        }*/
-
-//        for(Chromatogram chromatogram : chromatograms){
-//            if(Math.abs(chromatogram.getStartingPointRT()-14.9)<0.5 && Math.abs(chromatogram.getMeanMZ()-521)<5)
-//                test.add(chromatogram);
-//        }
-        //doubles.clear();
-        /*for(PeakCluster peakCluster : peakClusters){
-            if(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()<814.8&&peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()>814.5){
-                doubles.add(peakCluster);
-            }
-        }*/
-
-        /*for(Chromatogram chromatogram : chromatograms){
-            if(chromatogram.getMeanMZ()<521.5&&chromatogram.getMeanMZ()>521){
-                chromatogram.writeToCSV();
-            }
-        }*/
-
-        /*for(int i=0; i<10; i++){
-            chromatograms.get(i).plotSmoothToFindMinima();
-        }*/
         double time1 = System.currentTimeMillis()-time;
         System.out.println(time1);
-        AdductDatabase.createDatabase(dir);
+        AdductDatabase.createDatabase(dir, adductFile, compoundFile);
 
         ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
 
-        ExecutorService service = Executors.newCachedThreadPool();
+        ExecutorService executorService = Executors.newCachedThreadPool();
         for(PeakCluster cluster : peakClusters){
             //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
             if(!multimap.keySet().contains(new Integer(cluster.getCharge()))){
@@ -186,10 +154,10 @@ public class Main {
             Runnable task = () -> {
                 cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
             };
-            service.submit(task);
+            executorService.submit(task);
         }
-        service.shutdown();
-        service.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
@@ -198,26 +166,41 @@ public class Main {
 
     /**
      * Takes all of the spectrum data from across the entire dataset and combines it into a single ArrayList. That
-     * ArrayList is then sorted into descending order of intensity to help streamline downstream use. Also, only significant
-     * values (intensity>threshold) are added to the ArrayList, everything else is discarded as noise
+     * ArrayList is then sorted into descending order of intensity to help streamline downstream use. Note that all data
+     * from the data set is included in this list, but it is expected that this list will be filtered further downstream
+     * to remove the insignificant points
      * @param scanArrayList An ArrayList containing the data for all scans
      * @param spectra An ArrayList containing the data for all spectra
-     * @param threshold The threshold used to determine whether or not a peak is noise or signal
      * @return An ArrayList of LocalPeak objects containing all the significant chromatograms
      */
-    static ArrayList<LocalPeak> localPeakList(ArrayList<IScan> scanArrayList, ArrayList<ISpectrum> spectra, double threshold){
+    static ArrayList<LocalPeak> localPeakList(ArrayList<IScan> scanArrayList, ArrayList<ISpectrum> spectra){
         ArrayList<LocalPeak> peakList = new ArrayList<>();
         for(int j=0; j<spectra.size(); j++){
             ISpectrum spectrum = spectra.get(j);
             double[] spec = spectrum.getIntensities();
             double[] mzVal = spectrum.getMZs();
             for(int i = 0; i<spectrum.getIntensities().length; i++){
-                if(spec[i]>threshold){
                     peakList.add(new LocalPeak(j,spec[i],mzVal[i],scanArrayList.get(j).getRt()));
-                }
             }
         }
         Collections.sort(peakList);
         return peakList;
+    }
+
+    static double meanIntensity(ArrayList<LocalPeak> list){
+        double sum = 0;
+        for(LocalPeak peak : list){
+            sum += peak.getIntensity();
+        }
+        return sum/list.size();
+    }
+
+    static double intensityStandardDeviation(ArrayList<LocalPeak> list, double mean){
+        double sum = 0;
+        for(LocalPeak peak : list){
+            sum += (peak.getIntensity()-mean)*(peak.getIntensity()-mean);
+        }
+        sum = sum/list.size();
+        return Math.sqrt(sum);
     }
 }
