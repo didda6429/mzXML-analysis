@@ -60,7 +60,7 @@ public class Chromatogram {
         threshold = thresh;
         inCluster = false;
         meanMZ = startingPoint.getMZ();
-        if(startingPoint.getScanNumber()>0) { //checks if the startingpoint is at the bottom of the file
+        if (startingPoint.getScanNumber() > 0) { //checks if the startingpoint is at the bottom of the file
             createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1);
         }
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
@@ -70,37 +70,36 @@ public class Chromatogram {
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
             createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1);
         }
-            startingPointIndex = intensityScanPairsBelow.size();
-            if (intensityScanPairs.size() > 4) {
-                smoothToFindMinima();
-            } else {
-                findLocalMinima();
-            }
-            isobars = new ArrayList<>();
-            pointsOfInflection.add(0, 0);
-            pointsOfInflection.add(pointsOfInflection.size(), intensityScanPairs.size());
-            if (intensityScanPairs.size() > 4 && pointsOfInflection.size() > 2) { //only performs the following code if the data has been smoothed
-                for (int i = 0; i < pointsOfInflection.size() - 1; i++) {
-                    ArrayList<LocalPeak> pairs = new ArrayList<>();
-                    double[] smooth = null;
-                    try {
-                        smooth = new double[pointsOfInflection.get(i + 1) - pointsOfInflection.get(i)];
-                    } catch (NegativeArraySizeException e){
-                        e.printStackTrace();
-                        System.out.println("test");
-                    }
-                    int x = 0;
-                    for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i + 1); j++) {
-                        pairs.add(intensityScanPairs.get(j));
-                        smooth[x] = smoothData[j];
-                        x++;
-                    }
-                    //isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, Arrays.copyOfRange(smoothData, pointsOfInflection.get(i), pointsOfInflection.get(i+1)), inCluster));
-                    isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
+        startingPointIndex = intensityScanPairsBelow.size();
+        if (intensityScanPairs.size() > 4) {
+            smoothToFindMinima();
+        } else {
+            findLocalMinima();
+        }
+        isobars = new ArrayList<>();
+        pointsOfInflection.add(0, 0);
+        pointsOfInflection.add(pointsOfInflection.size(), intensityScanPairs.size());
+        if (intensityScanPairs.size() > 4 && pointsOfInflection.size() > 2) { //only performs the following code if the data has been smoothed
+            for (int i = 0; i < pointsOfInflection.size() - 1; i++) {
+                ArrayList<LocalPeak> pairs = new ArrayList<>();
+                double[] smooth = null;
+                try {
+                    smooth = new double[pointsOfInflection.get(i + 1) - pointsOfInflection.get(i)];
+                } catch (NegativeArraySizeException e) {
+                    e.printStackTrace();
+                    System.out.println("test");
                 }
-            } else {
-                isobars.add(new Isobar(intensityScanPairs, meanMZ, tolerance, threshold, smoothData, inCluster));
+                int x = 0;
+                for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i + 1); j++) {
+                    pairs.add(intensityScanPairs.get(j));
+                    smooth[x] = smoothData[j];
+                    x++;
+                }
+                isobars.add(new Isobar(pairs, meanMZ, tolerance, threshold, smooth, inCluster));
             }
+        } else {
+            isobars.add(new Isobar(intensityScanPairs, meanMZ, tolerance, threshold, smoothData, inCluster));
+        }
     }
 
     /**
@@ -151,7 +150,7 @@ public class Chromatogram {
      */
     private int createPeakBelow(ArrayList<IScan> scanList, double average, double toler, int increment) throws FileParsingException {
         ISpectrum temp = scanList.get(increment).fetchSpectrum();
-        if(temp.findMzIdxsWithinPpm(average,toler)!=null) {
+        if (temp.findMzIdxsWithinPpm(average, toler) != null) {
             LocalPeak tempPeak = maxIntWithinTol(temp, average, toler, increment, scanList.get(increment).getRt());
             if (tempPeak.getIntensity() > this.threshold) {
                 int tempInt = Main.peakList.indexOf(tempPeak);
@@ -162,7 +161,7 @@ public class Chromatogram {
                 tempPeak.setIsUsed();
                 intensityScanPairsBelow.add(tempPeak);
                 Main.peakList.get(tempInt).setIsUsed();
-                if(increment>1) {
+                if (increment > 1) {
                     return createPeakBelow(scanList, averageMZBelow(), toler, increment - 1);
                 } else {
                     return 2;
@@ -205,19 +204,20 @@ public class Chromatogram {
     /**
      * This method applies a set of rules to the chromatogram object to determine if it is valid.
      * NOTE - The list of rules still needs development. At the moment, it only checks :
-     *  - more than 5 data points
-     *  - maxIntensity/minIntensity > 5
-     *  - maxIntensity > 5* threshold
+     * - more than 5 data points
+     * - maxIntensity/minIntensity > 5
+     * - maxIntensity > 5* threshold
+     *
      * @return true if it is valid, otherwise false
      */
-    boolean isValidStartingPoint(){
-        if(intensityScanPairs.size()>5){
+    boolean isValidStartingPoint() {
+        if (intensityScanPairs.size() > 5) {
             ArrayList<LocalPeak> tempList = intensityScanPairs;
             Collections.sort(tempList);
             double maxIntensity = tempList.get(0).getIntensity();
-            double minIntensity = tempList.get(tempList.size()-1).getIntensity();
-            if(maxIntensity/minIntensity>5){
-                if(maxIntensity>5*threshold) {
+            double minIntensity = tempList.get(tempList.size() - 1).getIntensity();
+            if (maxIntensity / minIntensity > 5) {
+                if (maxIntensity > 5 * threshold) {
                     return true;
                 }
             }
@@ -232,13 +232,13 @@ public class Chromatogram {
      * the smoothing doesnt work properly.
      */
     @Deprecated
-    private void findLocalMinima(){
+    private void findLocalMinima() {
         pointsOfInflection.clear();
         double[] intensityArray = new double[intensityScanPairs.size()];
-        for(int i=0; i<intensityArray.length; i++)
+        for (int i = 0; i < intensityArray.length; i++)
             intensityArray[i] = intensityScanPairs.get(i).getIntensity();
-        for(int i=1; i<intensityArray.length-1;i++){
-            if(intensityArray[i-1]>intensityArray[i]&&intensityArray[i]<intensityArray[i+1])
+        for (int i = 1; i < intensityArray.length - 1; i++) {
+            if (intensityArray[i - 1] > intensityArray[i] && intensityArray[i] < intensityArray[i + 1])
                 pointsOfInflection.add(i);
         }
     }
@@ -295,7 +295,9 @@ public class Chromatogram {
      *
      * @return the locations of the turning points
      */
-    ArrayList<Integer> getPointsOfInflection() { return pointsOfInflection; }
+    ArrayList<Integer> getPointsOfInflection() {
+        return pointsOfInflection;
+    }
 
     /**
      * Returns the mean m/z for the Chromatogram
@@ -338,22 +340,27 @@ public class Chromatogram {
      *
      * @return the RT of the starting point as a double
      */
-    double getStartingPointRT() { return startingPointRT;}
+    double getStartingPointRT() {
+        return startingPointRT;
+    }
 
     /**
      * Returns the intensity of the LocalPeak which was used as a starting point
      *
      * @return the intensity of the starting point as a double
      */
-    double getStartingPointIntensity() { return startingPointIntensity;}
+    double getStartingPointIntensity() {
+        return startingPointIntensity;
+    }
 
     /**
      * Returns only the intensities in an array
+     *
      * @return only the intensities from the ion chromatogram
      */
-    double[] getIntensities(){
+    double[] getIntensities() {
         double[] val = new double[intensityScanPairs.size()];
-        for(int i=0; i<intensityScanPairs.size(); i++){
+        for (int i = 0; i < intensityScanPairs.size(); i++) {
             val[i] = intensityScanPairs.get(i).getIntensity();
         }
         return val;
@@ -361,11 +368,12 @@ public class Chromatogram {
 
     /**
      * Returns only the retention times in an array
+     *
      * @return only the retention times from the ion chromatogram
      */
-    double[] getRT(){
+    double[] getRT() {
         double[] val = new double[intensityScanPairs.size()];
-        for(int i=0; i<intensityScanPairs.size(); i++){
+        for (int i = 0; i < intensityScanPairs.size(); i++) {
             val[i] = intensityScanPairs.get(i).getRT();
         }
         return val;
@@ -374,14 +382,15 @@ public class Chromatogram {
     /**
      * Writes the smoothData information to a file. NOTE, this method is only intended for debugging at the moment
      * (I am using it to transfer the data to R more easily where it's easier to plot and validate the data)
+     *
      * @throws IOException IOException from the file handling stuff
      */
     void writeToCSV() throws IOException {
-        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//peaks//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + "rt" + this.getStartingPointRT() +".csv");
+        FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//peaks//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + "rt" + this.getStartingPointRT() + ".csv");
         StringBuilder sb = new StringBuilder();
         double[] inten = this.getIntensities();
         double[] rt = this.getRT();
-        for(int i=0; i<inten.length; i++){
+        for (int i = 0; i < inten.length; i++) {
             sb.append(inten[i]).append(",").append(rt[i]).append("\n");
         }
         writer.append(sb);
@@ -394,36 +403,37 @@ public class Chromatogram {
      * the class variable double[] smoothData. The indices of the smoothed-minima are also stored into pointsOfInflection,
      * replacing whatever values were there.
      */
-    void smoothToFindMinima(){
-        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
+    void smoothToFindMinima() {
+        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(), this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
-        smoothData = curveSmooth.savitzkyGolay((int) (10*Math.log(this.getRT().length)));
+        smoothData = curveSmooth.savitzkyGolay((int) (10 * Math.log(this.getRT().length)));
         //smoothData = curveSmooth.savitzkyGolayPlot(15);
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
         double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
         //pointsOfInflection.clear();
         ArrayList<Double> temp = new ArrayList();
-        for(int i=0; i<getRT().length; i++){
+        for (int i = 0; i < getRT().length; i++) {
             temp.add(getRT()[i]);
         }
-        for(int i=0; i<minima[0].length; i++){
-            pointsOfInflection.add(temp.indexOf(search(minima[0][i],this.getRT())));
+        for (int i = 0; i < minima[0].length; i++) {
+            pointsOfInflection.add(temp.indexOf(search(minima[0][i], this.getRT())));
         }
     }
 
     /**
      * finds the value of an array which is closest to the given value. This method is used in the smoothToFindMinima()
      * method when the position of the minima isn't exactly the same as the RT of one of the scans
+     *
      * @param myNumber The number to compare against
-     * @param numbers The array of numbers to search in
+     * @param numbers  The array of numbers to search in
      * @return The closest number in the array
      */
     private static double search(double myNumber, double[] numbers) {
         int idx = 0;
-        double distance = Math.abs(myNumber-numbers[0]);
-        for(int c = 1; c < numbers.length; c++){
-            double cdistance = Math.abs(myNumber-numbers[c]);
-            if(cdistance < distance){
+        double distance = Math.abs(myNumber - numbers[0]);
+        for (int c = 1; c < numbers.length; c++) {
+            double cdistance = Math.abs(myNumber - numbers[c]);
+            if (cdistance < distance) {
                 idx = c;
                 distance = cdistance;
             }
@@ -433,17 +443,20 @@ public class Chromatogram {
     }
 
     //This method is for testing only
-    void plotSmoothToFindMinima(){
-        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(),this.getIntensities());
+    void plotSmoothToFindMinima() {
+        CurveSmooth curveSmooth = new CurveSmooth(this.getRT(), this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
-        double[] temp = curveSmooth.savitzkyGolayPlot((int) (6*Math.log(this.getRT().length)));
+        double[] temp = curveSmooth.savitzkyGolayPlot((int) (6 * Math.log(this.getRT().length)));
     }
 
     /**
      * Returns the smoothed dataset as calculated in smoothToFindMinima() (using a Savitzky-Golay filter)
+     *
      * @return the smoothed dataset as doubles
      */
-    double[] getSmoothData() { return smoothData;}
+    double[] getSmoothData() {
+        return smoothData;
+    }
 
     /**
      * This method sets the value of the inCluster flag to true. In normal use, this method should only ever need
@@ -455,16 +468,27 @@ public class Chromatogram {
 
     /**
      * Returns the value of the inCluster flag indicating whether or not the Chromatogram is already part of a PeakCluster
+     *
      * @return the value of the inCluster flag
      */
-    boolean getInCluster(){
+    boolean getInCluster() {
         return inCluster;
     }
 
+    /**
+     * Returns the isobars found in this chromatogram.
+     *
+     * @return an ArrayList<Isobar> containing the isobars
+     */
     public ArrayList<Isobar> getIsobars() {
         return isobars;
     }
 
+    /**
+     * Returns whether or not this chromatogram is part of a PeakCluster
+     *
+     * @return a boolean indication whether or not it is part of a cluster
+     */
     public boolean isInCluster() {
         return inCluster;
     }
