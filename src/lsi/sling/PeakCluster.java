@@ -7,12 +7,13 @@ import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This Class represents a peak cluster (i.e. a peak along with it's isotopes).
  * @author Adithya Diddapur
  */
-public class PeakCluster {
+public class PeakCluster extends MzXMLFile {
 
     final static double NEUTRON_MASS = 1.00866491588;
 
@@ -26,21 +27,47 @@ public class PeakCluster {
     private double targetMZAbove;
     private double targetMZBelow;
 
-    public PeakCluster(Chromatogram startingPoint, double ppm) throws IOException {
+    /**
+     * This method acts as a wrapper to create a list of PeakClusters for a given file. In normal use, this method should
+     * be the only necessary point of access into this class
+     * @param file The mzXML file to loop through
+     * @param adductDir The folder containing the adduct database
+     * @return An ArrayList<PeakCluster>
+     * @throws IOException Thrown if there is a problem reading in the database information
+     * @throws ClassNotFoundException Thrown if there is a problem reading in the database information
+     * @throws InterruptedException Thrown if there is a problem with the concurrency
+     */
+    public static ArrayList<PeakCluster> createPeakClusters(MzXMLFile file, String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
+        ArrayList<Chromatogram> chromatograms = file.chromatograms;
+        ArrayList<PeakCluster> clusters = new ArrayList<>();
+        for(Chromatogram chromatogram : chromatograms){
+            if(!chromatogram.getInCluster()){
+                chromatogram.setInCluster();
+                clusters.add(new PeakCluster(chromatogram, 20, Main.files.indexOf(file)));
+            }
+        }
+        //filters out the invalid peakClusters (based on starting point)
+        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        //maps the clusters to their adducts
+        clusters = mapClusters(clusters, adductDir);
+        return clusters;
+    }
+
+    public PeakCluster(Chromatogram startingPoint, double ppm, int pos) throws IOException {
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
         neutronMassPpmAbove = ppmAbove(NEUTRON_MASS, ppm);
         neutronMassPpmBelow = ppmBelow(NEUTRON_MASS, ppm);
-        checkCharge(startingPoint);
-        checkAboveOrBelow(startingPoint,false, ppm);
+        checkCharge(startingPoint, pos);
+        checkAboveOrBelow(startingPoint,false, ppm, pos);
         for(int i = tempChroma.size(); i>0; i--){
             chromatograms.add(tempChroma.get(i-1));
         }
         startingPointIndex = chromatograms.size();
         chromatograms.add(startingPoint);
         tempChroma.clear();
-        checkAboveOrBelow(startingPoint,true, ppm);
+        checkAboveOrBelow(startingPoint,true, ppm, pos);
         for(Chromatogram chromatogram : tempChroma){
             chromatograms.add(chromatogram);
         }
@@ -63,13 +90,13 @@ public class PeakCluster {
      * the same place --> should not be possible which means it's a bug) it returns 2
      * @throws IllegalArgumentException if the number of valid peaks it finds is nonsensical (negative or not a number or something silly)
      */
-    private int checkAboveOrBelow(Chromatogram previous, boolean above, double ppm){
+    private int checkAboveOrBelow(Chromatogram previous, boolean above, double ppm, int pos){
         double RT = previous.getStartingPointRT();
         double inten = previous.getStartingPointIntensity();
         double mz = previous.getMeanMZ();
         ArrayList<Chromatogram> temp = new ArrayList<>();
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
-        for (Chromatogram chromatogram : Main.chromatograms){
+        for (Chromatogram chromatogram : Main.files.get(pos).chromatograms){
             if(!chromatogram.equals(previous)) {
                 //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                 if (Math.abs(Math.abs(mz - chromatogram.getMeanMZ()) - neutronMassPpmAbove /charge) < 0.05 && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
@@ -84,9 +111,9 @@ public class PeakCluster {
             }
         }
         if(temp.size()==1){
-            Main.chromatograms.get(Main.chromatograms.indexOf(temp.get(0))).setInCluster();
+            Main.files.get(pos).chromatograms.get(Main.files.get(pos).chromatograms.indexOf(temp.get(0))).setInCluster();
             tempChroma.add(temp.get(0));
-            return checkAboveOrBelow(temp.get(0), above, ppm);
+            return checkAboveOrBelow(temp.get(0), above, ppm, pos);
         } else if(temp.size()==0) {
             return 1;
         } else if(temp.size()>1) {
@@ -97,9 +124,9 @@ public class PeakCluster {
                     index = i;
                 }
             }
-            Main.chromatograms.get(Main.chromatograms.indexOf(temp.get(index))).setInCluster();
+            Main.files.get(pos).chromatograms.get(Main.files.get(pos).chromatograms.indexOf(temp.get(index))).setInCluster();
             tempChroma.add(temp.get(index));
-            return checkAboveOrBelow(temp.get(0), above, ppm);
+            return checkAboveOrBelow(temp.get(0), above, ppm, pos);
         } else {
             throw new IllegalArgumentException();
         }
@@ -173,13 +200,13 @@ public class PeakCluster {
      * functionality does exist but is currently commented out of the code to improve performance and reliability.
      * @param startingPoint the starting Chromatogram
      */
-    private void checkCharge(Chromatogram startingPoint){
+    private void checkCharge(Chromatogram startingPoint, int pos){
         double RT = startingPoint.getStartingPointRT();
         double inten = startingPoint.getStartingPointIntensity();
         double mz = startingPoint.getMeanMZ();
         ArrayList<Chromatogram> temp = new ArrayList();
         //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
-        for (Chromatogram chromatogram : Main.chromatograms){
+        for (Chromatogram chromatogram : Main.files.get(pos).chromatograms){
             if(!chromatogram.equals(startingPoint)) {
                 //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
                 if(Math.abs(mz-chromatogram.getMeanMZ())< neutronMassPpmAbove /2){
