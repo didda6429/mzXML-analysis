@@ -118,9 +118,9 @@ public class MzXMLFile {
 //
 //        double time1 = System.currentTimeMillis()-time;
 //        System.out.println(time1);
-//        AdductDatabase.createDatabase(dir, adductFile, compoundFile);
+//        AdductDatabase.createDatabase(databaseDir, adductFile, compoundFile);
 //
-//        peakClusters = mapClusters(peakClusters, dir);
+//        peakClusters = mapClusters(peakClusters, databaseDir);
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
