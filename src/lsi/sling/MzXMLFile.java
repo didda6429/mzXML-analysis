@@ -66,7 +66,7 @@ public class MzXMLFile {
         scanArrayList = new ArrayList<>(); //ArrayList containing only the data from the scans with spectrums
         for (IScan scan : num2scanMap.values()) {
             ISpectrum spectrum = scan.getSpectrum();
-            if (spectrum != null && scan.getMsLevel().intValue()==1) {
+            if (spectrum != null && scan.getMsLevel() ==1) {
                 //System.out.printf("%s does NOT have a parsed spectrum\n", scan.toString());
                 //System.out.printf("%s has a parsed spectrum, it contains %d data points\n",
                 //        scan.toString(), spectrum.getMZs().length);
@@ -160,6 +160,55 @@ public class MzXMLFile {
         }
     }
 
+    /**
+     * This method acts as a wrapper to create a list of PeakClusters for a given file. In normal use, this method should
+     * be the only necessary point of access into this class
+     * @param adductDir The folder containing the adduct database
+     * @throws IOException Thrown if there is a problem reading in the database information
+     * @throws ClassNotFoundException Thrown if there is a problem reading in the database information
+     * @throws InterruptedException Thrown if there is a problem with the concurrency
+     */
+    public void createPeakClusters(String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
+        ArrayList<Chromatogram> chromatograms = this.chromatograms;
+        ArrayList<PeakCluster> clusters = new ArrayList<>();
+        for(Chromatogram chromatogram : chromatograms){
+            if(!chromatogram.getInCluster()){
+                chromatogram.setInCluster();
+                clusters.add(new PeakCluster(chromatogram, 20, this));
+            }
+        }
+        //filters out the invalid peakClusters (based on starting point)
+        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        //maps the clusters to their adducts
+        clusters = mapClusters(clusters, adductDir);
+        peakClusters = clusters;
+    }
+
+    /**
+     * This method maps each PeakCluster to it's possible adducts.
+     * @param list the list of PeakClusters to map
+     * @return An ArrayList<PeakCluster> containing mapped PeakClusters
+     * @throws InterruptedException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
+        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
+
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        for(PeakCluster cluster : list){
+            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+            if(!multimap.keySet().contains(cluster.getCharge())){
+                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+            }
+            Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+            executorService.submit(task);
+        }
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        return list;
+    }
+
     static double meanIntensity(ArrayList<LocalPeak> list){
         double sum = 0;
         for(LocalPeak peak : list){
@@ -177,7 +226,4 @@ public class MzXMLFile {
         return Math.sqrt(sum);
     }
 
-    public ArrayList<LocalPeak> getPeakList() {
-        return this.peakList;
-    }
 }
