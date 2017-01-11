@@ -67,7 +67,7 @@ public class Chromatogram{
      *                      validity of a chromatogram (within the scope of a peak cluster)
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    private Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int pos) throws FileParsingException {
+    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int pos) throws FileParsingException {
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
