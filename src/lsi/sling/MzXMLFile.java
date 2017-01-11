@@ -152,33 +152,6 @@ public class MzXMLFile {
         return peakList;
     }
 
-    /**
-     * This method maps each PeakCluster to it's possible adducts.
-     * @param list the list of PeakClusters to map
-     * @return An ArrayList<PeakCluster> containing mapped PeakClusters
-     * @throws InterruptedException
-     * @throws IOException
-     * @throws ClassNotFoundException
-     */
-    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
-        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
-
-        ExecutorService executorService = Executors.newCachedThreadPool();
-        for(PeakCluster cluster : list){
-            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
-            if(!multimap.keySet().contains(new Integer(cluster.getCharge()))){
-                multimap.putAll(new Integer(cluster.getCharge()),AdductDatabase.readDatabase(dir,cluster.getCharge()));
-            }
-            Runnable task = () -> {
-                cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
-            };
-            executorService.submit(task);
-        }
-        executorService.shutdown();
-        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-        return list;
-    }
-
     static double meanIntensity(ArrayList<LocalPeak> list){
         double sum = 0;
         for(LocalPeak peak : list){

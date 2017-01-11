@@ -1,5 +1,6 @@
 package lsi.sling;
 
+import com.google.common.collect.ArrayListMultimap;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
@@ -7,6 +8,9 @@ import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -280,5 +284,32 @@ public class PeakCluster extends MzXMLFile {
             if (a.getResultMZ() > targetMZAbove) break;
         }
         this.adductList = temp;
+    }
+
+    /**
+     * This method maps each PeakCluster to it's possible adducts.
+     * @param list the list of PeakClusters to map
+     * @return An ArrayList<PeakCluster> containing mapped PeakClusters
+     * @throws InterruptedException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
+        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
+
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        for(PeakCluster cluster : list){
+            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+            if(!multimap.keySet().contains(new Integer(cluster.getCharge()))){
+                multimap.putAll(new Integer(cluster.getCharge()),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+            }
+            Runnable task = () -> {
+                cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+            };
+            executorService.submit(task);
+        }
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        return list;
     }
 }
