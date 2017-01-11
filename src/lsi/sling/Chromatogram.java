@@ -42,7 +42,7 @@ public class Chromatogram{
      * @return an ArrayList<Chromatogram>
      * @throws FileParsingException Thrown if there is a problem parsing the spectrum information
      */
-    public static ArrayList<Chromatogram> createChromatograms(MzXMLFile mzXMLFile) throws FileParsingException {
+    /*public static ArrayList<Chromatogram> createChromatograms(MzXMLFile mzXMLFile) throws FileParsingException {
         ArrayList<LocalPeak> peakList = mzXMLFile.getPeakList();
         ArrayList<Chromatogram> chromatograms = new ArrayList<>();
         for(LocalPeak localPeak : peakList){
@@ -51,7 +51,7 @@ public class Chromatogram{
             }
         }
         return chromatograms;
-    }
+    }*/
 
     /**
      * Constructor which creates a new Chromatogram. This class is designed so that in normal use, a user only every needs
@@ -67,7 +67,7 @@ public class Chromatogram{
      *                      validity of a chromatogram (within the scope of a peak cluster)
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, int pos) throws FileParsingException {
+    public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, ArrayList<LocalPeak> pos) throws FileParsingException {
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
@@ -131,19 +131,19 @@ public class Chromatogram{
      * reach the end of the file
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    private int createPeakAbove(ArrayList<IScan> scanList, double average, double toler, int increment, int pos) throws FileParsingException {
+    private int createPeakAbove(ArrayList<IScan> scanList, double average, double toler, int increment, ArrayList<LocalPeak> pos) throws FileParsingException {
         ISpectrum temp = scanList.get(increment).fetchSpectrum();
         if (temp.findMzIdxsWithinPpm(average, toler) != null) {
             LocalPeak tempPeak = maxIntWithinTol(temp, average, toler, increment, scanList.get(increment).getRt());
             if (tempPeak.getIntensity() > threshold) {
-                int tempInt = Main.files.get(pos).getPeakList().indexOf(tempPeak);
+                int tempInt = pos.indexOf(tempPeak);
                 if (tempInt == -1) {
                     tempPeak.setIsUsed();
-                    tempInt = Main.files.get(pos).peakList.indexOf(tempPeak);
+                    tempInt = pos.indexOf(tempPeak);
                 }
                 tempPeak.setIsUsed();
                 intensityScanPairs.add(tempPeak);
-                Main.files.get(pos).peakList.get(tempInt).setIsUsed();
+                pos.get(tempInt).setIsUsed();
                 if (increment < scanList.size() - 2) {
                     return createPeakAbove(scanList, averageMZ(), toler, increment + 1, pos);
                 } else {
@@ -165,19 +165,19 @@ public class Chromatogram{
      * @return the integer 1 if the operation was carried out successfully, 2 if the scans reached the end of the file
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
-    private int createPeakBelow(ArrayList<IScan> scanList, double average, double toler, int increment, int pos) throws FileParsingException {
+    private int createPeakBelow(ArrayList<IScan> scanList, double average, double toler, int increment, ArrayList<LocalPeak> pos) throws FileParsingException {
         ISpectrum temp = scanList.get(increment).fetchSpectrum();
         if (temp.findMzIdxsWithinPpm(average, toler) != null) {
             LocalPeak tempPeak = maxIntWithinTol(temp, average, toler, increment, scanList.get(increment).getRt());
             if (tempPeak.getIntensity() > this.threshold) {
-                int tempInt = Main.files.get(pos).getPeakList().indexOf(tempPeak);
+                int tempInt = pos.indexOf(tempPeak);
                 if (tempInt == -1) {
                     tempPeak.setIsUsed();
-                    tempInt = Main.files.get(pos).getPeakList().indexOf(tempPeak);
+                    tempInt = pos.indexOf(tempPeak);
                 }
                 tempPeak.setIsUsed();
                 intensityScanPairsBelow.add(tempPeak);
-                Main.files.get(pos).getPeakList().get(tempInt).setIsUsed();
+                pos.get(tempInt).setIsUsed();
                 if (increment > 1) {
                     return createPeakBelow(scanList, averageMZBelow(), toler, increment - 1, pos);
                 } else {

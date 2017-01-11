@@ -152,6 +152,14 @@ public class MzXMLFile {
         return peakList;
     }
 
+    public void createChromatograms() throws FileParsingException {
+        for(LocalPeak localPeak : peakList){
+            if(!localPeak.getIsUsed()){
+                chromatograms.add(new Chromatogram(scanArrayList, localPeak, 20, threshold, peakList));
+            }
+        }
+    }
+
     static double meanIntensity(ArrayList<LocalPeak> list){
         double sum = 0;
         for(LocalPeak peak : list){

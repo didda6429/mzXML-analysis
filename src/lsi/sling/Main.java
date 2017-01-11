@@ -50,7 +50,8 @@ public class Main {
         }
         System.out.println("test");
         for (MzXMLFile file : files) {
-            file.chromatograms = Chromatogram.createChromatograms(file);
+            //file.chromatograms = Chromatogram.createChromatograms(file);
+            file.createChromatograms();
         }
         AdductDatabase.createDatabase(databaseDir,adductFile,compoundFile);
         for (MzXMLFile file : files) {
