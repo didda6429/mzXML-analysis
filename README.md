@@ -2,7 +2,8 @@
 Java project for untargeted mass spec raw peak analysis. In particular, this project aims to design and implement 
 algorithms for:
 - Peak Picking
-- Peak integration
+- Peak Identification
+- Peak Integration
 
 from raw mzXML files.
 

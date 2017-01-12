@@ -1,5 +1,6 @@
 package lsi.sling;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 import com.opencsv.CSVReader;
@@ -13,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * This class handles the database of possible adducts. Specifically, it deals with creating, reading, and writing the
@@ -22,6 +24,8 @@ import java.util.concurrent.TimeUnit;
  * @author Adithya Diddapur
  */
 public class AdductDatabase {
+
+    static ArrayListMultimap<Integer, Adduct> multimap;
 
     /**
      * Reads in the data from the file which was created in @createDatabase(String folder)
@@ -49,6 +53,7 @@ public class AdductDatabase {
      * @throws IOException If there is an error creating the file
      */
     static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException, InterruptedException {
+        multimap = ArrayListMultimap.create(); //initialises the multimap for use in the mapCluster method
         if(!new File(folder).exists()){
             System.out.println("Database does not exist");
             System.out.println("Creating Database now");
@@ -68,8 +73,6 @@ public class AdductDatabase {
                 oos.writeObject(multimap.get(key));
                 oos.close();
             }
-            data = null;
-            multimap = null;
             System.gc();
             System.out.println("Finished Creating Database");
             return 0;
@@ -110,8 +113,7 @@ public class AdductDatabase {
                 icharge = (icharge.charAt(icharge.length() - 1) + icharge); //this line works
                 icharge = icharge.substring(0, icharge.length() - 1); //this line works
                 int ionCharge = Integer.parseInt(icharge); //this line works
-                CSVReader compoundReader = null;
-                compoundReader = new CSVReader(new BufferedReader(new FileReader(compoundFile)));
+                CSVReader compoundReader = new CSVReader(new BufferedReader(new FileReader(compoundFile)));
                 while ((nextLineCompound = compoundReader.readNext()) != null) {
                     if (!nextLineCompound[0].equals("")) {
                         String massString = nextLineCompound[1];
@@ -148,5 +150,23 @@ public class AdductDatabase {
         executor.shutdown();
         executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
         return temp;
+    }
+
+    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
+        //ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
+        //multimap = ArrayListMultimap.create();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        for(PeakCluster cluster : list){
+            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+            if(!multimap.keySet().contains(cluster.getCharge())){
+                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+            }
+            Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+            executorService.submit(task);
+        }
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        return list;
     }
 }

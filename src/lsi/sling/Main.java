@@ -46,30 +46,54 @@ public class Main {
 //        files.add(new MzXMLFile("C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML", databaseDir, adductFile, compoundFile));
 //        files.add(new MzXMLFile("C:/Users/lsiv67/Documents/mzXML Sample Data/DDApos/CS52684_pos_IDA.mzXML", databaseDir, adductFile, compoundFile));
         assert mzXMLFiles != null : "Main line 48";
+        AdductDatabase.createDatabase(databaseDir,adductFile,compoundFile);
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         for(File file : mzXMLFiles){
-            files.add(new MzXMLFile(file.getAbsolutePath(), databaseDir, adductFile, compoundFile));
+            Runnable task = () -> {
+                try {
+                    files.add(new MzXMLFile(file.getAbsolutePath(), databaseDir, adductFile, compoundFile));
+                } catch (FileParsingException | InterruptedException | IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            };
+            executorService.submit(task);
         }
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+
         System.out.println("test");
 
-        //ExecutorService service = Executors.newCachedThreadPool();
-        for (MzXMLFile file : files) {
+        for(MzXMLFile file : files) {
+            file.peakClusters = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
+        }
+
+        //ExecutorService service = Executors.newFixedThreadPool(8);
+        //for (MzXMLFile file : files) {
             //file.chromatograms = Chromatogram.createChromatograms(file);
             //file.createChromatograms();
-            //Runnable task = () -> {
-            //    try {
-                    file.createChromatograms();
-            //    } catch (FileParsingException e) {
-            //       e.printStackTrace();
-            //    }
-            //};
-            //service.submit(task);
-        }
+        //    Runnable task = () -> {
+        //        try {
+        //            file.peakClusters = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
+        //        } catch (InterruptedException | IOException | ClassNotFoundException e){
+        //            e.printStackTrace();
+        //        }
+                /*try {
+                    //file.createChromatograms();
+                    //file.createPeakClusters(databaseDir);
+                } catch (InterruptedException | ClassNotFoundException | IOException e) {
+                   e.printStackTrace();
+                }*/
+        //    };
+         //   service.submit(task);
+        //}
         //service.shutdown();
-        AdductDatabase.createDatabase(databaseDir,adductFile,compoundFile);
-        for (MzXMLFile file : files) {
+        //service.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+
+        //AdductDatabase.createDatabase(databaseDir,adductFile,compoundFile);
+        //for (MzXMLFile file : files) {
             //file.peakClusters = PeakCluster.createPeakClusters(file, databaseDir);
-            file.createPeakClusters(databaseDir);
-        }
+            //file.createPeakClusters(databaseDir);
+        //}
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
     }

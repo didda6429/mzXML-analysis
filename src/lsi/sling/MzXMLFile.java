@@ -33,7 +33,7 @@ public class MzXMLFile {
 
     double threshold = 0;
 
-    public MzXMLFile(String location, String dir, String adductFile, String compoundFile) throws FileParsingException, InterruptedException, IOException, ClassNotFoundException {
+    public MzXMLFile(String location, String databaseDir, String adductFile, String compoundFile) throws FileParsingException, InterruptedException, IOException, ClassNotFoundException {
         MZXMLFile source = new MZXMLFile(location);
         long time = System.currentTimeMillis();
         fileLocation = location;
@@ -94,6 +94,7 @@ public class MzXMLFile {
 
         //iterates through peakList (which contains LocalPeak objects) to form the chromatograms. Note that they are in descending order (of max intensity)
         chromatograms = new ArrayList<>();
+        createChromatograms();
 //        for(LocalPeak localPeak : peakList){
 //            if(!localPeak.getIsUsed()){
 //                chromatograms.add(new Chromatogram(scanArrayList,localPeak,20, threshold, Main.files.indexOf(this)));
@@ -105,22 +106,7 @@ public class MzXMLFile {
 
 
         peakClusters = new ArrayList<>(); //the arraylist which contains the PeakCluster objects
-//
-//        //loops through the chromatograms and forms the PeakCluster objects. Note that they are in descending order (of max intensity)
-//        for (Chromatogram chromatogram : chromatograms){
-//            if(!chromatogram.getInCluster()){
-//                chromatogram.setInCluster();
-//                peakClusters.add(new PeakCluster(chromatogram,20));
-//            }
-//        }
-//
-//        peakClusters = (ArrayList<PeakCluster>) peakClusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
-//
-//        double time1 = System.currentTimeMillis()-time;
-//        System.out.println(time1);
-//        AdductDatabase.createDatabase(databaseDir, adductFile, compoundFile);
-//
-//        peakClusters = mapClusters(peakClusters, databaseDir);
+        createPeakClusters(databaseDir);
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
@@ -180,7 +166,7 @@ public class MzXMLFile {
         //filters out the invalid peakClusters (based on starting point)
         clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
         //maps the clusters to their adducts
-        clusters = mapClusters(clusters, adductDir);
+        //clusters = mapClusters(clusters, adductDir);
         peakClusters = clusters;
     }
 
@@ -192,22 +178,22 @@ public class MzXMLFile {
      * @throws IOException
      * @throws ClassNotFoundException
      */
-    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
-        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
-
-        ExecutorService executorService = Executors.newCachedThreadPool();
-        for(PeakCluster cluster : list){
-            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
-            if(!multimap.keySet().contains(cluster.getCharge())){
-                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
-            }
-            Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
-            executorService.submit(task);
-        }
-        executorService.shutdown();
-        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-        return list;
-    }
+//    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
+//        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
+//
+//        ExecutorService executorService = Executors.newCachedThreadPool();
+//        for(PeakCluster cluster : list){
+//            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
+//            if(!multimap.keySet().contains(cluster.getCharge())){
+//                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+//            }
+//            Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
+//            executorService.submit(task);
+//        }
+//        executorService.shutdown();
+//        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+//        return list;
+//    }
 
     static double meanIntensity(ArrayList<LocalPeak> list){
         double sum = 0;
