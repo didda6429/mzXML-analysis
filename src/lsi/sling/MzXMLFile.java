@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  */
 public class MzXMLFile {
 
-    public ArrayList<IScan> scanArrayList;
+    ArrayList<IScan> scanArrayList;
     ArrayList<LocalPeak> peakList;
     ArrayList<Chromatogram> chromatograms;
     public ArrayList<PeakCluster> peakClusters;
@@ -85,8 +85,8 @@ public class MzXMLFile {
         peakList = localPeakList(scanArrayList,spectrumArrayList);
 
         //calculates the mean intensity of the LocalPeak objects and the value of mu+2sigma
-        double mean = meanIntensity(peakList);
-        double fivesd = mean + 5*intensityStandardDeviation(peakList,mean);
+        double mean = meanIntensity();
+        double fivesd = mean + 5*intensityStandardDeviation(mean);
         //sets the threshold to be mu+2sigma for future steps
         threshold = fivesd;
         //filters the peakList so that only LocalPeaks with intensity>(mu+2sigma) are kept for further analysis
@@ -95,25 +95,14 @@ public class MzXMLFile {
         //iterates through peakList (which contains LocalPeak objects) to form the chromatograms. Note that they are in descending order (of max intensity)
         chromatograms = new ArrayList<>();
         createChromatograms();
-//        for(LocalPeak localPeak : peakList){
-//            if(!localPeak.getIsUsed()){
-//                chromatograms.add(new Chromatogram(scanArrayList,localPeak,20, threshold, Main.files.indexOf(this)));
-//                peakList = chromatograms.get(chromatograms.size()-1).getPeakList();
-//            }
-//        }
-
-        //chromatograms = Chromatogram.createChromatograms(this);
-
 
         peakClusters = new ArrayList<>(); //the arraylist which contains the PeakCluster objects
-        createPeakClusters(databaseDir);
+        createPeakClusters();
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
         System.out.println("test");
     }
-
-    public MzXMLFile() {}
 
     /**
      * Takes all of the spectrum data from across the entire dataset and combines it into a single ArrayList. That
@@ -134,13 +123,15 @@ public class MzXMLFile {
                 peakList.add(new LocalPeak(j,spec[i],mzVal[i],scanArrayList.get(j).getRt()));
             }
         }
-        Collections.sort(peakList);
+        Collections.sort(peakList); //sorts it in descending order of intensity
         return peakList;
     }
 
     public void createChromatograms() throws FileParsingException {
         for(LocalPeak localPeak : peakList){
             if(!localPeak.getIsUsed()){
+                //iteratively creates recursive chromatograms from all localPeaks
+                //intensities below mu+5sigma should have already been filtered out
                 chromatograms.add(new Chromatogram(scanArrayList, localPeak, 20, threshold, peakList));
             }
         }
@@ -148,68 +139,53 @@ public class MzXMLFile {
 
     /**
      * This method acts as a wrapper to create a list of PeakClusters for a given file. In normal use, this method should
-     * be the only necessary point of access into this class
-     * @param adductDir The folder containing the adduct database
-     * @throws IOException Thrown if there is a problem reading in the database information
-     * @throws ClassNotFoundException Thrown if there is a problem reading in the database information
-     * @throws InterruptedException Thrown if there is a problem with the concurrency
+     * be the only necessary point of access into this class. Note: This method does NOT map the clusters to their adducts,
+     * that functionality is handled by the mapCluster method in the AdductDatabase class
      */
-    public void createPeakClusters(String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
+    public void createPeakClusters() {
         ArrayList<Chromatogram> chromatograms = this.chromatograms;
         ArrayList<PeakCluster> clusters = new ArrayList<>();
         for(Chromatogram chromatogram : chromatograms){
+            //iteratively loops through each unused chromatogram so that eventually every chromatogram is used
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
                 clusters.add(new PeakCluster(chromatogram, 20, this));
             }
         }
         //filters out the invalid peakClusters (based on starting point)
+        //this filtering happens at the end to ensure low-abundance isotopes aren't missed
         clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
-        //maps the clusters to their adducts
-        //clusters = mapClusters(clusters, adductDir);
         peakClusters = clusters;
     }
 
     /**
-     * This method maps each PeakCluster to it's possible adducts.
-     * @param list the list of PeakClusters to map
-     * @return An ArrayList<PeakCluster> containing mapped PeakClusters
-     * @throws InterruptedException
-     * @throws IOException
-     * @throws ClassNotFoundException
+     * Calculates the meanIntensity of ALL LocalPeaks in this file. This value is later used to calculate mu+5sigma which
+     * is used as the noise/signal ration
+     * @return the mean intensity
      */
-//    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
-//        ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
-//
-//        ExecutorService executorService = Executors.newCachedThreadPool();
-//        for(PeakCluster cluster : list){
-//            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
-//            if(!multimap.keySet().contains(cluster.getCharge())){
-//                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
-//            }
-//            Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
-//            executorService.submit(task);
-//        }
-//        executorService.shutdown();
-//        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-//        return list;
-//    }
-
-    static double meanIntensity(ArrayList<LocalPeak> list){
+    private double meanIntensity(){
         double sum = 0;
-        for(LocalPeak peak : list){
+        for(LocalPeak peak : peakList){
             sum += peak.getIntensity();
         }
-        return sum/list.size();
+        return sum/peakList.size();
     }
 
-    static double intensityStandardDeviation(ArrayList<LocalPeak> list, double mean){
+    /**
+     * Calculates the meanIntensity of ALL LocalPeaks in this file. This value is later used to calculate mu+5sigma which
+     * is used as the noise/signal ration
+     * @return the mean intensity
+     */
+    private double intensityStandardDeviation(double mean){
         double sum = 0;
-        for(LocalPeak peak : list){
+        for(LocalPeak peak : peakList){
             sum += (peak.getIntensity()-mean)*(peak.getIntensity()-mean);
         }
-        sum = sum/list.size();
+        sum = sum/peakList.size();
         return Math.sqrt(sum);
     }
 
+    public ArrayList<LocalPeak> getPeakList() {
+        return peakList;
+    }
 }

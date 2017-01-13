@@ -3,7 +3,7 @@ package lsi.sling;
 import java.io.Serializable;
 
 /**
- * This class represents an adduct.
+ * This class represents a possible adduct (which a peakcluster could be).
  * @author Adithya Diddapur
  */
 public class Adduct implements Comparable<Adduct>, Serializable{
@@ -19,7 +19,7 @@ public class Adduct implements Comparable<Adduct>, Serializable{
     private String compoundSystemicName;
 
     /**
-     * This constructor creates an object given all of the relevant information. The idea is that all computation is
+     * This constructor creates an object given all of the relevant information. The intented use is for all computation to be
      * performed elsewhere and then this object is used to store the calculated data.
      * @param iName The name of the ion
      * @param iMassFunction The formula to calculate the mass of the entire adduct for this specific ion
@@ -45,9 +45,11 @@ public class Adduct implements Comparable<Adduct>, Serializable{
 
     /**
      * Creates a String[] containing all of the data from a particular object. This method is used when writing the List
-     * of objects to a file in AdductDatabase.createDatabase(String)
+     * of objects to a file in AdductDatabase.createDatabase(String).<br/>
+     * Note that this method has been replaced by writing the list itself (as an object) to the files
      * @return A String[] of length 9 containing the information
      */
+    @Deprecated
     String[] toStringArray(){
         String[] array = new String[9];
         array[0] = ionName;
@@ -98,6 +100,11 @@ public class Adduct implements Comparable<Adduct>, Serializable{
         return compoundSystemicName;
     }
 
+    /**
+     * Compares 2 adducts in order to implement the Comparable interface. They are compared in terms of result m/z value
+     * @param o An adduct to compare with
+     * @return an integer representing the result. <br/> 0 implies equality, 1 implies this object is "less than" (lower m/z value) o, and -1 implies this object is "greater than" o
+     */
     @Override
     public int compareTo(Adduct o) {
         int val = 0;

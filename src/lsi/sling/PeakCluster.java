@@ -14,12 +14,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * This Class represents a peak cluster (i.e. a peak along with it's isotopes).
+ * This Class represents a peak cluster (i.e. a peak and it's isotopes).
  * @author Adithya Diddapur
  */
-public class PeakCluster extends MzXMLFile {
+public class PeakCluster {
 
-    final static double NEUTRON_MASS = 1.00866491588;
+    private final static double NEUTRON_MASS = 1.00866491588;
 
     private double neutronMassPpmAbove;
     private double neutronMassPpmBelow;
@@ -28,50 +28,32 @@ public class PeakCluster extends MzXMLFile {
     private int charge; //in normal use, this should only ever be 1 or 2
     private int startingPointIndex;
     private List<Adduct> adductList;
+    //determines the m/z window in which to find adducts
     private double targetMZAbove;
     private double targetMZBelow;
 
     /**
-     * This method acts as a wrapper to create a list of PeakClusters for a given file. In normal use, this method should
-     * be the only necessary point of access into this class
-     * @param file The mzXML file to loop through
-     * @param adductDir The folder containing the adduct database
-     * @return An ArrayList<PeakCluster>
-     * @throws IOException Thrown if there is a problem reading in the database information
-     * @throws ClassNotFoundException Thrown if there is a problem reading in the database information
-     * @throws InterruptedException Thrown if there is a problem with the concurrency
+     * Creates a new peakcluster from a given starting point. This includes estimating the charge and isotopes. Also, after
+     * a chromatogram has been used, it is marked as inPeakCluster in the MzXMLFile
+     * @param startingPoint The Chromatogram to use as a starting point
+     * @param ppm The precision to use
+     * @param mzXMLFile The MzXMLFile to look through for isotopes
      */
-    public static ArrayList<PeakCluster> createPeakClusters(MzXMLFile file, String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
-        ArrayList<Chromatogram> chromatograms = file.chromatograms;
-        ArrayList<PeakCluster> clusters = new ArrayList<>();
-        for(Chromatogram chromatogram : chromatograms){
-            if(!chromatogram.getInCluster()){
-                chromatogram.setInCluster();
-                clusters.add(new PeakCluster(chromatogram, 20, file));
-            }
-        }
-        //filters out the invalid peakClusters (based on starting point)
-        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
-        //maps the clusters to their adducts
-        clusters = mapClusters(clusters, adductDir);
-        return clusters;
-    }
-
-    public PeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) throws IOException {
+    public PeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) {
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
         neutronMassPpmAbove = ppmAbove(NEUTRON_MASS, ppm);
         neutronMassPpmBelow = ppmBelow(NEUTRON_MASS, ppm);
-        checkCharge(startingPoint, mzXMLFile);
-        checkAboveOrBelow(startingPoint,false, ppm, mzXMLFile);
+        checkCharge(startingPoint, mzXMLFile); //estimates the charge
+        checkAboveOrBelow(startingPoint,false, ppm, mzXMLFile); //looks for isotopes below the starting m/z
         for(int i = tempChroma.size(); i>0; i--){
             chromatograms.add(tempChroma.get(i-1));
         }
         startingPointIndex = chromatograms.size();
         chromatograms.add(startingPoint);
         tempChroma.clear();
-        checkAboveOrBelow(startingPoint,true, ppm, mzXMLFile);
+        checkAboveOrBelow(startingPoint,true, ppm, mzXMLFile); //looks for isotopes above the starting m/z
         for(Chromatogram chromatogram : tempChroma){
             chromatograms.add(chromatogram);
         }
@@ -99,28 +81,23 @@ public class PeakCluster extends MzXMLFile {
         double inten = previous.getStartingPointIntensity();
         double mz = previous.getMeanMZ();
         ArrayList<Chromatogram> temp = new ArrayList<>();
-        //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
+        //This loop looks for Chromatograms within the m/z value which correlate to the recursive starting point
         for (Chromatogram chromatogram : mzXMLFile.chromatograms){
             if(!chromatogram.equals(previous)) {
-                //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /charge && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/charge&& recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                 if (Math.abs(Math.abs(mz - chromatogram.getMeanMZ()) - neutronMassPpmAbove /charge) < 0.05 && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                     if (correlateChromatograms(previous, chromatogram) > 0.8) { //uses the correlation function below to determine isobars. The constant still needs to be adjusted.
                         temp.add(chromatogram);
                     }
-                    /*if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
-                    //if(Math.abs(RT - chromatogram.getStartingPointRT()) < RT*0.05){  //This statement still needs work
-                        temp.add(chromatogram);
-                    }*/
                 }
             }
         }
-        if(temp.size()==1){
+        if(temp.size()==1){ //if only one possibility is found add it to tempChroma and repeat the recursive loop with it as a starting point
             mzXMLFile.chromatograms.get(mzXMLFile.chromatograms.indexOf(temp.get(0))).setInCluster();
             tempChroma.add(temp.get(0));
             return checkAboveOrBelow(temp.get(0), above, ppm, mzXMLFile);
-        } else if(temp.size()==0) {
+        } else if(temp.size()==0) { //if no possibilities are found, return 1
             return 1;
-        } else if(temp.size()>1) {
+        } else if(temp.size()>1) { //if more than one possibility is found, use the one closest to the exact theoretical value
             double minDistance = Math.abs(temp.get(0).getMeanMZ()-(previous.getMeanMZ()+NEUTRON_MASS));
             int index = 0;
             for(int i=1; i<temp.size(); i++){
@@ -132,7 +109,7 @@ public class PeakCluster extends MzXMLFile {
             tempChroma.add(temp.get(index));
             return checkAboveOrBelow(temp.get(0), above, ppm, mzXMLFile);
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(); //thrown if temp.size()<1. If this is thrown there is a big problem
         }
     }
 
@@ -145,6 +122,7 @@ public class PeakCluster extends MzXMLFile {
      * @return The correlation coefficient between the two chromatograms
      */
     private static double correlateChromatograms(Chromatogram a, Chromatogram b){
+        //finds the overlapping datapoints to correlate
         double minPoint = Math.max(a.getIntensityScanPairs().get(0).getRT(),b.getIntensityScanPairs().get(0).getRT());
         double maxPoint = Math.min(a.getIntensityScanPairs().get(a.getIntensityScanPairs().size()-1).getRT(),b.getIntensityScanPairs().get(b.getIntensityScanPairs().size()-1).getRT());
         ArrayList<Double> aIntensities = new ArrayList();
@@ -161,6 +139,7 @@ public class PeakCluster extends MzXMLFile {
         }
         double[] aInten = new double[aIntensities.size()];
         double[] bInten = new double[bIntensities.size()];
+        ///validates that both arrays have the same size
         if(aInten.length!=bInten.length){
             throw new DimensionMismatchException(bInten.length,aInten.length);
         }
@@ -171,7 +150,7 @@ public class PeakCluster extends MzXMLFile {
         }
         double corr;
         try {
-            corr = new PearsonsCorrelation().correlation(aInten, bInten);
+            corr = new PearsonsCorrelation().correlation(aInten, bInten); //calculates the pearsons correlation coefficient
         } catch (MathIllegalArgumentException e){
             //e.printStackTrace();
             return 0; //returns 0 if the overlap is too small to calculate a correlation(less than 2 data points)
@@ -287,14 +266,43 @@ public class PeakCluster extends MzXMLFile {
     }
 
     /**
-     * This method maps each PeakCluster to it's possible adducts.
+     * This method acts as a wrapper to create a list of PeakClusters for a given file. In normal use, this method should
+     * be the only necessary point of access into this class. Note that this method has been replaced by the createPeakClusters
+     * method in the MzXMLFile class.
+     * @param file The mzXML file to loop through
+     * @param adductDir The folder containing the adduct database
+     * @return An ArrayList<PeakCluster>
+     * @throws IOException Thrown if there is a problem reading in the database information
+     * @throws ClassNotFoundException Thrown if there is a problem reading in the database information
+     * @throws InterruptedException Thrown if there is a problem with the concurrency
+     */
+    @Deprecated
+    public static ArrayList<PeakCluster> createPeakClusters(MzXMLFile file, String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
+        ArrayList<Chromatogram> chromatograms = file.chromatograms;
+        ArrayList<PeakCluster> clusters = new ArrayList<>();
+        for(Chromatogram chromatogram : chromatograms){
+            if(!chromatogram.getInCluster()){
+                chromatogram.setInCluster();
+                clusters.add(new PeakCluster(chromatogram, 20, file));
+            }
+        }
+        //filters out the invalid peakClusters (based on starting point)
+        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        //maps the clusters to their adducts
+        clusters = mapClusters(clusters, adductDir);
+        return clusters;
+    }
+
+    /**
+     * This method maps each PeakCluster to it's possible adducts. This method has been replaced by the mapClusters method
+     * in the AdductDatabase class.
      * @param list the list of PeakClusters to map
      * @return An ArrayList<PeakCluster> containing mapped PeakClusters
-     * @throws InterruptedException
-     * @throws IOException
-     * @throws ClassNotFoundException
+     * @throws InterruptedException If there is an error with the concurrency
+     * @throws IOException If there is an error reading the database
      */
-    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
+    @Deprecated
+    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException {
         ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
 
         ExecutorService executorService = Executors.newCachedThreadPool();

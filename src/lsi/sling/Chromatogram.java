@@ -36,24 +36,6 @@ public class Chromatogram{
     private boolean inCluster;
 
     /**
-     * This method acts as a wrapper to create a list of chromatograms for a given file. The intention is for this method
-     * to be the only necessary point of access into this class
-     * @param mzXMLFile the mzXML file to loop through
-     * @return an ArrayList<Chromatogram>
-     * @throws FileParsingException Thrown if there is a problem parsing the spectrum information
-     */
-    /*public static ArrayList<Chromatogram> createChromatograms(MzXMLFile mzXMLFile) throws FileParsingException {
-        ArrayList<LocalPeak> peakList = mzXMLFile.getPeakList();
-        ArrayList<Chromatogram> chromatograms = new ArrayList<>();
-        for(LocalPeak localPeak : peakList){
-            if(!localPeak.getIsUsed()){
-                chromatograms.add(new Chromatogram(mzXMLFile.scanArrayList,localPeak,20, mzXMLFile.threshold, Main.files.indexOf(mzXMLFile)));
-            }
-        }
-        return chromatograms;
-    }*/
-
-    /**
      * Constructor which creates a new Chromatogram. This class is designed so that in normal use, a user only every needs
      * to call the constructor which acts as a wrapper for everything.
      * i.e. Once called, the constructor initialises all the relevant variables and runs the recursive algorithm to
@@ -68,6 +50,7 @@ public class Chromatogram{
      * @throws FileParsingException Thrown when the recursive loops try to access the scan data
      */
     public Chromatogram(ArrayList<IScan> scanList, LocalPeak startingPoint, double tol, double thresh, ArrayList<LocalPeak> pos) throws FileParsingException {
+        //assigns most variables
         startingPointRT = startingPoint.getRT();
         startingPointIntensity = startingPoint.getIntensity();
         intensityScanPairs = new ArrayList<>();
@@ -78,17 +61,22 @@ public class Chromatogram{
         inCluster = false;
         meanMZ = startingPoint.getMZ();
         if (startingPoint.getScanNumber() > 0) { //checks if the startingpoint is at the bottom of the file
+            //recursively creates the chromatogram below the starting point
             createPeakBelow(scanList, meanMZ, tol, startingPoint.getScanNumber() - 1, pos);
         }
         for (int i = intensityScanPairsBelow.size(); i > 0; i--) {
+            //adds the points below the starting point to the "global" list
             intensityScanPairs.add(intensityScanPairsBelow.get(i - 1));
         }
         intensityScanPairs.add(startingPoint);
         if (startingPoint.getScanNumber() + 1 < scanList.size()) {
+            //recursively creates the chromatogram above the starting point
             createPeakAbove(scanList, averageMZ(), tol, startingPoint.getScanNumber() + 1, pos);
         }
         startingPointIndex = intensityScanPairsBelow.size();
+        //performs smoothing to try to find isobars NOTE: THIS IS STILL HIGHLY EXPERIMENTAL
         if (intensityScanPairs.size() > 4) {
+            //uses a savitzky-golay filter if possible
             smoothToFindMinima();
         } else {
             findLocalMinima();
@@ -96,6 +84,8 @@ public class Chromatogram{
         isobars = new ArrayList<>();
         pointsOfInflection.add(0, 0);
         pointsOfInflection.add(pointsOfInflection.size(), intensityScanPairs.size());
+        //tries to split to chromatogram based on the smoothed-minima
+        //the resulting Isobar objects are then stored
         if (intensityScanPairs.size() > 4 && pointsOfInflection.size() > 2) { //only performs the following code if the data has been smoothed
             for (int i = 0; i < pointsOfInflection.size() - 1; i++) {
                 ArrayList<LocalPeak> pairs = new ArrayList<>();
@@ -458,11 +448,14 @@ public class Chromatogram{
                 distance = cdistance;
             }
         }
-        double theNumber = numbers[idx];
-        return theNumber;
+        return numbers[idx];
     }
 
-    //This method is for testing only
+    /**
+     * This method is the same as the smoothToFindMinima method. Except, it also draws plots using the
+     * built in flanagan plotting system. This method was intended for development
+     */
+    @Deprecated
     void plotSmoothToFindMinima() {
         CurveSmooth curveSmooth = new CurveSmooth(this.getRT(), this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter

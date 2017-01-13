@@ -25,20 +25,29 @@ import java.util.stream.Collectors;
  */
 public class AdductDatabase {
 
-    static ArrayListMultimap<Integer, Adduct> multimap;
+    private static ArrayListMultimap<Integer, Adduct> multimap; //multimap used to cache the adduct information when it is read in
 
     /**
-     * Reads in the data from the file which was created in @createDatabase(String folder)
+     * Reads in the data for a specific charge from the file which was created in @createDatabase(String folder)
      * @param folder The folder of the file created in @createDatabase(String folder)
+     * @param charge The adduct charge to read in from the folder
      * @return An ArrayList contining the data from the file
      * @throws IOException If there is an error reading from the file
-     * @throws ClassNotFoundException If there is an error converting the object to an ArrayList<Adduct>
      */
-    static List<Adduct> readDatabase(String folder, int charge) throws IOException, ClassNotFoundException {
+    static List<Adduct> readDatabase(String folder, int charge) throws IOException {
         System.out.println("Reading in Database for charge = " + charge);
+        //streams to read the data in
         FileInputStream fin = new FileInputStream(new File(folder + File.separator + charge + ".adduct"));
         ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(fin));
-        List<Adduct> data = (List<Adduct>) ois.readObject();
+
+        List<Adduct> data = null; //initialies the variable outside the scope of the try-catch
+        try {
+            data = (List<Adduct>) ois.readObject();
+        } catch (ClassNotFoundException e){
+            System.out.println("ClassNotFoundException e @ readDatabase line 43");
+            e.printStackTrace();
+        }
+        ois.close();
         fin.close();
         System.out.println("Finished Reading Database for charge = " + charge);
         return data;
@@ -49,33 +58,37 @@ public class AdductDatabase {
      * given location. If it does not exist, the method calls createListOfAdducts and stores it in a new file at the
      * given location
      * @param folder The address of the file to check for
+     * @param adductFile The location of the .csv file containing the adduct information
+     * @param compoundFile The location of the .cssv file containing all the possible compounds
      * @return 1 if the file already exists. 0 if a new file was created
      * @throws IOException If there is an error creating the file
      */
-    static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException, InterruptedException {
+    static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException {
         multimap = ArrayListMultimap.create(); //initialises the multimap for use in the mapCluster method
-        if(!new File(folder).exists()){
+        if(!new File(folder).exists()){ //creates a folder to store all the files for each specific charge
             System.out.println("Database does not exist");
             System.out.println("Creating Database now");
             new File(folder).mkdirs();
-            List<Adduct> data = createListOfAdducts(adductFile, compoundFile);
-            System.gc();
+            List<Adduct> data = createListOfAdducts(adductFile, compoundFile); //computes the actual list of adducts
+            //creates a multimap ordered by charge to make it easy to retrieve ALL the adducts for a specific charge
             ListMultimap<Integer,Adduct> multimap = Multimaps.index(
                     data,
-                    adduct -> adduct.getIonCharge()
+                    Adduct::getIonCharge
             );
+            //writes the data for each individual charge to a different file
+            //doing this allows for caching upon reading
             int[] keys = Arrays.stream(multimap.keySet().toArray()).mapToInt(i -> (int)i).toArray();
             for(int key : keys){
                 File file = new File(folder + File.separator + key + ".adduct");
                 file.createNewFile();
-                FileOutputStream fos = new FileOutputStream(file);
-                ObjectOutputStream oos = new ObjectOutputStream(fos);
+                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+                ObjectOutputStream oos = new ObjectOutputStream(bos);
                 oos.writeObject(multimap.get(key));
+                bos.close();
                 oos.close();
             }
-            System.gc();
             System.out.println("Finished Creating Database");
-            return 0;
+            return 0; //returns 0 if a new database was created
         } else {
             System.out.println("Database already exists");
             return 1; //returns 1 if the file already exists
@@ -86,87 +99,100 @@ public class AdductDatabase {
      * This method reads in the "raw" csv files (containing ion and compound information)  and combines them. To do this, it
      * parses the expression in the ion file and uses that to calculate the resultant m/z for each combination. This data
      * is then stored in a List of Adduct objects. Note that this method executes the method concurrently for each possibility
-     * to speed up processing time
+     * to speed up processing time. In case an interruptedException is thrown by the ExecutorService, it is caught and handled
+     * within this method
+     * @param adductF The location of the .csv file containing the adduct information
+     * @param compoundF The location of the .cssv file containing all the possible compounds
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
      */
-    static private List<Adduct> createListOfAdducts(String adductF, String compoundF) throws IOException, InterruptedException {
-        //List<Adduct> temp = Collections.synchronizedList(new ArrayList());
+    static private List<Adduct> createListOfAdducts(String adductF, String compoundF) throws IOException {
         List<Adduct> temp = Collections.synchronizedList(new ArrayList<Adduct>());
-        //ArrayList temp = new ArrayList();
         File adductFile = new File(adductF);
         File compoundFile = new File(compoundF);
         CSVReader adductReader = new CSVReader(new BufferedReader(new FileReader(adductFile)));
-        //CSVReader compoundReader = new CSVReader(new FileReader(compoundFile));
         String[] nextLineCompound;
+        try { //to catch the InterruptedException thrown by executor.awaitTermination
+            ExecutorService executor = Executors.newCachedThreadPool(); //to parallelise the task
+            //loop to iterate through the adductFile and read the contents iteratively
+            for (String[] adductInfo : adductReader) {
+                String expression = adductInfo[2];
+                String ionName = adductInfo[1];
+                if (!expression.equals("Ion mass")) { //to ignore the first (title) line
+                    //parses all relevant values for later use
+                    double ionMass = Double.parseDouble(adductInfo[5]);
+                    String icharge = adductInfo[3];
+                    icharge = (icharge.charAt(icharge.length() - 1) + icharge);
+                    icharge = icharge.substring(0, icharge.length() - 1);
+                    int ionCharge = Integer.parseInt(icharge);
+                    //CSVReader to read the compounds in
+                    //The nested loop ensures that every possible combination of adduct and compound is computed
+                    CSVReader compoundReader = new CSVReader(new BufferedReader(new FileReader(compoundFile)));
+                    while ((nextLineCompound = compoundReader.readNext()) != null) {
+                        if (!nextLineCompound[0].equals("")) {
+                            String massString = nextLineCompound[1];
+                            String compoundFormula = nextLineCompound[0];
+                            String compoundCommonName = nextLineCompound[2];
+                            String compoundSystemicName = nextLineCompound[3];
+                            if (!massString.equals("exactMass")) {
+                                //creates a runnable for each combination for the sake of concurrency
+                                Runnable task = () -> {
+                                    Expr expr = null;
+                                    try {
+                                        expr = Parser.parse(expression);
+                                    } catch (SyntaxException e) {
+                                        e.printStackTrace();
+                                    }
+                                    //calls functionality from the expr package to parse the expressions
+                                    Variable M = Variable.make("M");
+                                    M.setValue(Double.parseDouble(massString));
+                                    if (expr != null) {
+                                        temp.add(new Adduct(ionName, expression, ionMass, ionCharge, Double.parseDouble(massString), expr.value(), compoundFormula, compoundCommonName, compoundSystemicName));
+                                    }
+                                };
 
-        ExecutorService executor = Executors.newCachedThreadPool();
-        //ExecutorService executor = Executors.newWorkStealingPool();
-
-        //ArrayList<Double> expressions = new ArrayList();
-        for (String[] adductInfo : adductReader) {
-            String expression = adductInfo[2];
-            String ionName = adductInfo[1]; //this line works
-            if (!expression.equals("Ion mass")) {
-                double ionMass = Double.parseDouble(adductInfo[5]); //this line works
-                String icharge = adductInfo[3]; //this line works
-                icharge = (icharge.charAt(icharge.length() - 1) + icharge); //this line works
-                icharge = icharge.substring(0, icharge.length() - 1); //this line works
-                int ionCharge = Integer.parseInt(icharge); //this line works
-                CSVReader compoundReader = new CSVReader(new BufferedReader(new FileReader(compoundFile)));
-                while ((nextLineCompound = compoundReader.readNext()) != null) {
-                    if (!nextLineCompound[0].equals("")) {
-                        String massString = nextLineCompound[1];
-                        String compoundFormula = nextLineCompound[0]; //this line works
-                        String compoundCommonName = nextLineCompound[2]; //this line works
-                        String compoundSystemicName = nextLineCompound[3]; //this line works
-                        if (!massString.equals("exactMass")) {
-                            Runnable task = () -> {
-                                //String icharge = adductInfo[3];
-                                //icharge = (icharge.charAt(icharge.length()-1) + icharge);
-                                //icharge = icharge.substring(0,icharge.length()-1);
-                                Expr expr = null;
-                                try {
-                                    expr = Parser.parse(expression);
-                                } catch (SyntaxException e) {
-                                    e.printStackTrace();
-                                }
-                                Variable M = Variable.make("M");
-                                M.setValue(Double.parseDouble(massString));
-                                //temp.add(new Adduct(adductInfo[1],expression,Double.parseDouble(adductInfo[5]),Integer.parseInt(adductInfo[3]),Double.parseDouble(massString),expr.value(),compoundInfo[0],compoundInfo[2],compoundInfo[3]));
-                                //temp.add(expr.value());
-                                if (expr != null) {
-                                    temp.add(new Adduct(ionName, expression, ionMass, ionCharge, Double.parseDouble(massString), expr.value(), compoundFormula, compoundCommonName, compoundSystemicName));
-                                }
-                                //System.out.println(expr.value()); //this line does NOT work
-                            };
-
-                            executor.submit(task);
+                                executor.submit(task);
+                            }
                         }
                     }
                 }
             }
+            executor.shutdown();
+            executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        } catch (InterruptedException e){
+            System.out.println("InterruptedException e @ createListOfAdducts line 150");
+            e.printStackTrace();
         }
-        executor.shutdown();
-        executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
         return temp;
     }
 
-    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException, ClassNotFoundException {
-        //ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
-        //multimap = ArrayListMultimap.create();
-
-        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        for(PeakCluster cluster : list){
-            //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
-            if(!multimap.keySet().contains(cluster.getCharge())){
-                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+    /**
+     *This method maps each peakcluster in the input peakClusterList, to the peakClusterList of possible adducts it could be.
+     * @param peakClusterList The peakClusterList of adducts to map
+     * @param dir The location of the adductDatabase folder
+     * @return The list of possible adducts
+     * @throws IOException Thrown if there is an error reading in the database
+     */
+    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> peakClusterList, String dir) throws IOException {
+        //wrapper to catch the InterruptedException thrown by the ExecutorService on termination
+        try {
+            ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            for (PeakCluster cluster : peakClusterList) {
+                //reads in the data for that particular charge if it hasn't already been read (and cached)
+                //if the data hasn't already been read, it is cached in the multimap
+                if (!multimap.keySet().contains(cluster.getCharge())) {
+                    multimap.putAll(cluster.getCharge(), AdductDatabase.readDatabase(dir, cluster.getCharge()));
+                }
+                //Runnable to map the adducts
+                Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge() == cluster.getCharge()).collect(Collectors.toList()));
+                executorService.submit(task);
             }
-            Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
-            executorService.submit(task);
+            executorService.shutdown();
+            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        } catch (InterruptedException e){
+            System.out.println("InterruptedException e @ mapClusters line 182");
+            e.printStackTrace();
         }
-        executorService.shutdown();
-        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-        return list;
+        return peakClusterList;
     }
 }
