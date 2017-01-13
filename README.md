@@ -25,6 +25,4 @@ Note that the software has been tested against multiple lipidomics mzXML files a
 at this early stage is is difficult to validate it's accuracy (whilst changes are still being made regularly).
 
 ##Performance
-This software is multi-threaded and is capable of using a virtually unlimited number of cores (particularly for the
-peak identification step). This means that, as well as performing better on a faster machine, it will also perform significantly
-better on a machine with more cores.
+This software is highly multi-threaded and is capable of using a virtually unlimited number of cores.
