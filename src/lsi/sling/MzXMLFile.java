@@ -1,6 +1,5 @@
 package lsi.sling;
 
-import com.google.common.collect.ArrayListMultimap;
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -13,9 +12,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -28,7 +24,7 @@ public class MzXMLFile {
     ArrayList<IScan> scanArrayList;
     ArrayList<LocalPeak> peakList;
     ArrayList<Chromatogram> chromatograms;
-    public ArrayList<PeakCluster> peakClusters;
+    private ArrayList<PeakCluster> peakClusters;
     String fileLocation;
 
     double threshold = 0;
@@ -187,5 +183,17 @@ public class MzXMLFile {
 
     public ArrayList<LocalPeak> getPeakList() {
         return peakList;
+    }
+
+    /**
+     * This method is used in the main method to map the adducts
+     * @param peakClusters The modified list of PeakClusters to save
+     */
+    public void setPeakClusters(ArrayList<PeakCluster> peakClusters) {
+        this.peakClusters = peakClusters;
+    }
+
+    public ArrayList<PeakCluster> getPeakClusters() {
+        return peakClusters;
     }
 }

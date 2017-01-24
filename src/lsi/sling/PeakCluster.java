@@ -31,6 +31,7 @@ public class PeakCluster {
     //determines the m/z window in which to find adducts
     private double targetMZAbove;
     private double targetMZBelow;
+    private boolean inAlignedCluster;
 
     /**
      * Creates a new peakcluster from a given starting point. This includes estimating the charge and isotopes. Also, after
@@ -40,6 +41,7 @@ public class PeakCluster {
      * @param mzXMLFile The MzXMLFile to look through for isotopes
      */
     public PeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) {
+        inAlignedCluster = false;
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
@@ -246,7 +248,7 @@ public class PeakCluster {
      * Returns the calculated charge of the cluster
      * @return the charge of the cluster
      */
-    int getCharge() {return charge;}
+    public int getCharge() {return charge;}
 
     int getStartingPointIndex() { return startingPointIndex;}
 
@@ -263,6 +265,18 @@ public class PeakCluster {
             if (a.getResultMZ() > targetMZAbove) break;
         }
         this.adductList = temp;
+    }
+
+    /**
+     * Sets the value of the flag inAlignedCluster to true. Once it has been set as true, there is no way to turn it
+     * back to false. This is to ensure the integrity of the data.
+     */
+    void setInAlignedCluster(){
+        inAlignedCluster = true;
+    }
+
+    boolean getInAlignedCluster(){
+        return inAlignedCluster;
     }
 
     /**
@@ -287,7 +301,7 @@ public class PeakCluster {
             }
         }
         //filters out the invalid peakClusters (based on starting point)
-        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        clusters = (ArrayList<PeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
         //maps the clusters to their adducts
         clusters = mapClusters(clusters, adductDir);
         return clusters;

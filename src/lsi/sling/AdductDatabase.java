@@ -10,7 +10,10 @@ import expr.SyntaxException;
 import expr.Variable;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +32,7 @@ public class AdductDatabase {
 
     /**
      * Reads in the data for a specific charge from the file which was created in @createDatabase(String folder)
+     *
      * @param folder The folder of the file created in @createDatabase(String folder)
      * @param charge The adduct charge to read in from the folder
      * @return An ArrayList contining the data from the file
@@ -43,7 +47,7 @@ public class AdductDatabase {
         List<Adduct> data = null; //initialies the variable outside the scope of the try-catch
         try {
             data = (List<Adduct>) ois.readObject();
-        } catch (ClassNotFoundException e){
+        } catch (ClassNotFoundException e) {
             System.out.println("ClassNotFoundException e @ readDatabase line 43");
             e.printStackTrace();
         }
@@ -57,28 +61,29 @@ public class AdductDatabase {
      * This method checks to see if a file containing the output list from createListOfAdducts already exists at the
      * given location. If it does not exist, the method calls createListOfAdducts and stores it in a new file at the
      * given location
-     * @param folder The address of the file to check for
-     * @param adductFile The location of the .csv file containing the adduct information
+     *
+     * @param folder       The address of the file to check for
+     * @param adductFile   The location of the .csv file containing the adduct information
      * @param compoundFile The location of the .cssv file containing all the possible compounds
      * @return 1 if the file already exists. 0 if a new file was created
      * @throws IOException If there is an error creating the file
      */
     static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException {
         multimap = ArrayListMultimap.create(); //initialises the multimap for use in the mapCluster method
-        if(!new File(folder).exists()){ //creates a folder to store all the files for each specific charge
+        if (!new File(folder).exists()) { //creates a folder to store all the files for each specific charge
             System.out.println("Database does not exist");
             System.out.println("Creating Database now");
             new File(folder).mkdirs();
             List<Adduct> data = createListOfAdducts(adductFile, compoundFile); //computes the actual list of adducts
             //creates a multimap ordered by charge to make it easy to retrieve ALL the adducts for a specific charge
-            ListMultimap<Integer,Adduct> multimap = Multimaps.index(
+            ListMultimap<Integer, Adduct> multimap = Multimaps.index(
                     data,
                     Adduct::getIonCharge
             );
             //writes the data for each individual charge to a different file
             //doing this allows for caching upon reading
-            int[] keys = Arrays.stream(multimap.keySet().toArray()).mapToInt(i -> (int)i).toArray();
-            for(int key : keys){
+            int[] keys = Arrays.stream(multimap.keySet().toArray()).mapToInt(i -> (int) i).toArray();
+            for (int key : keys) {
                 File file = new File(folder + File.separator + key + ".adduct");
                 file.createNewFile();
                 BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
@@ -101,7 +106,8 @@ public class AdductDatabase {
      * is then stored in a List of Adduct objects. Note that this method executes the method concurrently for each possibility
      * to speed up processing time. In case an interruptedException is thrown by the ExecutorService, it is caught and handled
      * within this method
-     * @param adductF The location of the .csv file containing the adduct information
+     *
+     * @param adductF   The location of the .csv file containing the adduct information
      * @param compoundF The location of the .cssv file containing all the possible compounds
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
@@ -159,7 +165,7 @@ public class AdductDatabase {
             }
             executor.shutdown();
             executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-        } catch (InterruptedException e){
+        } catch (InterruptedException e) {
             System.out.println("InterruptedException e @ createListOfAdducts line 150");
             e.printStackTrace();
         }
@@ -167,10 +173,11 @@ public class AdductDatabase {
     }
 
     /**
-     *This method maps each peakcluster in the input peakClusterList, to the peakClusterList of possible adducts it could be.
+     * This method maps each peakcluster in the input peakClusterList, to the peakClusterList of possible adducts it could be.
+     *
      * @param peakClusterList The peakClusterList of adducts to map
-     * @param dir The location of the adductDatabase folder
-     * @return The list of possible adducts
+     * @param dir             The location of the adductDatabase folder
+     * @return A modified version of the input list containing the possible adducts
      * @throws IOException Thrown if there is an error reading in the database
      */
     static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> peakClusterList, String dir) throws IOException {
@@ -184,15 +191,50 @@ public class AdductDatabase {
                     multimap.putAll(cluster.getCharge(), AdductDatabase.readDatabase(dir, cluster.getCharge()));
                 }
                 //Runnable to map the adducts
-                Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge() == cluster.getCharge()).collect(Collectors.toList()));
+                Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream()
+                        .filter(p -> p.getIonCharge() == cluster.getCharge())
+                        .collect(Collectors.toList()));
+                executorService.submit(task);
+            }
+            executorService.shutdown();
+            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        } catch (InterruptedException e) {
+            System.out.println("InterruptedException e @ mapClusters line 182");
+            e.printStackTrace();
+        }
+        return peakClusterList;
+    }
+
+    /**
+     * This method maps each AlignedCluster in the input list to the possible adducts it could be.
+     * <br/>
+     * Note that this method is almost identical the mapClusters method except that this one works with AlignedPeakClusters
+     * @param alignedPeakClusters The list of AlignedPeakClusters to map
+     * @param dir The location of the adductDatabase folder
+     * @return A modified version of the input list containing the possible adducts
+     * @throws IOException Thrown if there is an error reading the database
+     */
+    static ArrayList<AlignedPeakCluster> mapAlignedClusters(ArrayList<AlignedPeakCluster> alignedPeakClusters, String dir) throws IOException {
+        try{
+            ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+                //reads in the data for that particular charge if it hasn't already been read (and cached)
+                //if the data hasn't already been read, it is cached in the multimap
+                //NOTE: In regular use this should NEVER be called because the regular PeakCluster objects should have been mapped first
+                if(!multimap.keySet().contains(alignedPeakCluster.getCharge())){
+                    multimap.putAll(alignedPeakCluster.getCharge(), AdductDatabase.readDatabase(dir, alignedPeakCluster.getCharge()));
+                }
+                //Runnable to map the adducts
+                Runnable task = () -> alignedPeakCluster.findAdducts(multimap.get(alignedPeakCluster.getCharge()).stream()
+                        .filter(p -> p.getIonCharge() == alignedPeakCluster.getCharge())
+                        .collect(Collectors.toList()));
                 executorService.submit(task);
             }
             executorService.shutdown();
             executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
         } catch (InterruptedException e){
-            System.out.println("InterruptedException e @ mapClusters line 182");
             e.printStackTrace();
         }
-        return peakClusterList;
+        return alignedPeakClusters;
     }
 }

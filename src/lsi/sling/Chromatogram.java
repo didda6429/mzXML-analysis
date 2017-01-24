@@ -99,6 +99,7 @@ public class Chromatogram{
                 int x = 0;
                 for (int j = pointsOfInflection.get(i); j < pointsOfInflection.get(i + 1); j++) {
                     pairs.add(intensityScanPairs.get(j));
+                    assert smooth != null;
                     smooth[x] = smoothData[j];
                     x++;
                 }
@@ -255,7 +256,7 @@ public class Chromatogram{
 
     /**
      * Calculates the average m/z value of all the LocalPeak objects in the intensityScanPairs ArrayList. This method
-     * returns the value as a double for use in the recursive loops and saves the value to the class field meanMZ
+     * returns the value as a double for use in the recursive loops and saves the value to the class field medianMZ
      *
      * @return The average m/z value as a double
      */
@@ -274,7 +275,7 @@ public class Chromatogram{
     /**
      * The average m/z value of all the LocalPeak objects in the intensityScanPairsBelow ArrayList. Note: This method
      * is very similar to the averageMZ() method except that it iis specifically intended for use in the
-     * createPeakBelow() method. The calculated value also gets saved to the class field meanMZ
+     * createPeakBelow() method. The calculated value also gets saved to the class field medianMZ
      *
      * @return the average m/z value from intensityScanPairsBelow
      */
