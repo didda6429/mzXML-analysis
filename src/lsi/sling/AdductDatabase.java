@@ -10,6 +10,7 @@ import expr.SyntaxException;
 import expr.Variable;
 
 import java.io.*;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,7 +74,9 @@ public class AdductDatabase {
         if (!new File(folder).exists()) { //creates a folder to store all the files for each specific charge
             System.out.println("Database does not exist");
             System.out.println("Creating Database now");
-            new File(folder).mkdirs();
+            if(!new File(folder).mkdirs()){
+                throw new FileNotFoundException();
+            }
             List<Adduct> data = createListOfAdducts(adductFile, compoundFile); //computes the actual list of adducts
             //creates a multimap ordered by charge to make it easy to retrieve ALL the adducts for a specific charge
             ListMultimap<Integer, Adduct> multimap = Multimaps.index(
@@ -85,7 +88,9 @@ public class AdductDatabase {
             int[] keys = Arrays.stream(multimap.keySet().toArray()).mapToInt(i -> (int) i).toArray();
             for (int key : keys) {
                 File file = new File(folder + File.separator + key + ".adduct");
-                file.createNewFile();
+                if(!file.createNewFile()){
+                    throw new FileAlreadyExistsException(file.getAbsolutePath());
+                }
                 BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
                 ObjectOutputStream oos = new ObjectOutputStream(bos);
                 oos.writeObject(multimap.get(key));
@@ -203,38 +208,5 @@ public class AdductDatabase {
             e.printStackTrace();
         }
         return peakClusterList;
-    }
-
-    /**
-     * This method maps each AlignedCluster in the input list to the possible adducts it could be.
-     * <br/>
-     * Note that this method is almost identical the mapClusters method except that this one works with AlignedPeakClusters
-     * @param alignedPeakClusters The list of AlignedPeakClusters to map
-     * @param dir The location of the adductDatabase folder
-     * @return A modified version of the input list containing the possible adducts
-     * @throws IOException Thrown if there is an error reading the database
-     */
-    static ArrayList<AlignedPeakCluster> mapAlignedClusters(ArrayList<AlignedPeakCluster> alignedPeakClusters, String dir) throws IOException {
-        try{
-            ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-            for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
-                //reads in the data for that particular charge if it hasn't already been read (and cached)
-                //if the data hasn't already been read, it is cached in the multimap
-                //NOTE: In regular use this should NEVER be called because the regular PeakCluster objects should have been mapped first
-                if(!multimap.keySet().contains(alignedPeakCluster.getCharge())){
-                    multimap.putAll(alignedPeakCluster.getCharge(), AdductDatabase.readDatabase(dir, alignedPeakCluster.getCharge()));
-                }
-                //Runnable to map the adducts
-                Runnable task = () -> alignedPeakCluster.findAdducts(multimap.get(alignedPeakCluster.getCharge()).stream()
-                        .filter(p -> p.getIonCharge() == alignedPeakCluster.getCharge())
-                        .collect(Collectors.toList()));
-                executorService.submit(task);
-            }
-            executorService.shutdown();
-            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-        } catch (InterruptedException e){
-            e.printStackTrace();
-        }
-        return alignedPeakClusters;
     }
 }

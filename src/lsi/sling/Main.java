@@ -77,39 +77,7 @@ public class Main {
             //file.getPeakClusters() = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
         }
 
-
-
-        //ExecutorService service = Executors.newFixedThreadPool(8);
-        //for (MzXMLFile file : files) {
-            //file.chromatograms = Chromatogram.createChromatograms(file);
-            //file.createChromatograms();
-        //    Runnable task = () -> {
-        //        try {
-        //            file.peakClusters = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
-        //        } catch (InterruptedException | IOException | ClassNotFoundException e){
-        //            e.printStackTrace();
-        //        }
-                /*try {
-                    //file.createChromatograms();
-                    //file.createPeakClusters(databaseDir);
-                } catch (InterruptedException | ClassNotFoundException | IOException e) {
-                   e.printStackTrace();
-                }*/
-        //    };
-         //   service.submit(task);
-        //}
-        //service.shutdown();
-        //service.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
-
-        //AdductDatabase.createDatabase(databaseDir,adductFile,compoundFile);
-        //for (MzXMLFile file : files) {
-            //file.peakClusters = PeakCluster.createPeakClusters(file, databaseDir);
-            //file.createPeakClusters(databaseDir);
-        //}
-
         //THE FOLLOWING CODE CHUNK DEALS WITH THE SAMPLE ALIGNMENT PROCESS
-
-        ArrayList<AlignedPeakCluster> alignedPeakClusters = new ArrayList<>();
         ArrayList<PeakCluster> allPeakClusters = new ArrayList<>();
         //Stores ALL peak clusters across all samples in a single list for downstream clustering and alignment
         for(MzXMLFile file : files){
@@ -130,19 +98,19 @@ public class Main {
         }
 
         //Peforms the clustering and stores the results in a list
-        DBSCANClusterer<PeakCluster> clusterer = new DBSCANClusterer<PeakCluster>(0.005, files.size()-2); //epsilon=0.005 works quite well
+        DBSCANClusterer<PeakCluster> clusterer = new DBSCANClusterer<>(0.005, files.size()-2); //epsilon=0.005 works quite well
         List<Cluster<PeakCluster>> clusterResults = clusterer.cluster(allPeakClusters);
 
-        //for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
-        //    alignedPeakCluster.setPossibleClusters(AdductDatabase.mapAlignedClusters());
-        //}
-        //alignedPeakClusters = AdductDatabase.mapAlignedClusters(alignedPeakClusters, databaseDir);
         PeakCluster start = files.get(0).getPeakClusters().get(0);
-        AlignedPeakCluster.alignPeaks(new ArrayList<>(files.subList(1,files.size())), start, 100, 0.5);
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
     }
 
+    /**
+     * For testing
+     * @param clusterArrayList
+     * @throws IOException
+     */
     static void writeToCSV(ArrayList<PeakCluster> clusterArrayList) throws IOException {
         CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("test.csv"))));
 
