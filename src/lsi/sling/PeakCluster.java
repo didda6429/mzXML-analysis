@@ -51,7 +51,7 @@ public class PeakCluster implements Clusterable{
         tempChroma = new ArrayList<>();
         neutronMassPpmAbove = ppmAbove(NEUTRON_MASS, ppm);
         neutronMassPpmBelow = ppmBelow(NEUTRON_MASS, ppm);
-        checkCharge(startingPoint, mzXMLFile); //estimates the charge
+        checkCharge(startingPoint, mzXMLFile, 3, ppm); //estimates the charge, considering 3 as the maximum (inclusive)
         checkAboveOrBelow(startingPoint,false, ppm, mzXMLFile); //looks for isotopes below the starting m/z
         for(int i = tempChroma.size(); i>0; i--){
             chromatograms.add(tempChroma.get(i-1));
@@ -183,45 +183,40 @@ public class PeakCluster implements Clusterable{
     }
 
     /**
-     * This method checks the charge of a peak cluster by looking for peaks adjacent to the starting point at the mz+-0.5
-     * locations. If it finds something, the charge is set to 2 and if it finds nothing the charge is set to 1. Note,
-     * if the charge!=2, it does NOT explicitly look for another chromatogram at the mz+-1 locations. However, this
-     * functionality does exist but is currently commented out of the code to improve performance and reliability.
-     * @param startingPoint the starting Chromatogram
+     * This method checks the charge of a PeakCluster by looking in a nearby m/z and RT window for chromatograms which could be
+     * the isotopes of the starting point. It can check for arbitrarily large charge values, and iterates down to 1 until
+     * it finds something. If it doesn't find anything, the charge is assumed to be 1.
+     * @param startingPoint The starting Chromatogram
+     * @param mzXMLFile The MzXMLFile in which to look for nearby chromatograms
+     * @param maxCharge The maximum charge value to consider
+     * @param ppm The ppm tolerance to use when looking for candidate chromatograms
      */
-    private void checkCharge(Chromatogram startingPoint, MzXMLFile mzXMLFile){
+    private void checkCharge(Chromatogram startingPoint, MzXMLFile mzXMLFile, int maxCharge, double ppm){
+        boolean chargeFound = false;
         double RT = startingPoint.getStartingPointRT();
         double inten = startingPoint.getStartingPointIntensity();
         double mz = startingPoint.getMeanMZ();
         ArrayList<Chromatogram> temp = new ArrayList();
-        //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
-        for (Chromatogram chromatogram : mzXMLFile.chromatograms){
-            if(!chromatogram.equals(startingPoint)) {
-                //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
-                if(Math.abs(mz-chromatogram.getMeanMZ())< neutronMassPpmAbove /2){
-                    if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
-                        temp.add(chromatogram);
-                    }
-                }
-            }
-        }
-        if(temp.size()>0){
-            charge = 2;
-        } else {
-            charge = 1;
-            /*for (Chromatogram chromatogram : Main.chromatograms){
-                if(!chromatogram.equals(startingPoint)) {
-                    if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove) {
+        //Updated to check to arbitrarily many charges
+        for(int i = maxCharge; i > 0; i--) {
+            for (Chromatogram chromatogram : mzXMLFile.chromatograms) {
+                if (!chromatogram.equals(startingPoint)) {
+                    //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
+                    if (Math.abs(mz - chromatogram.getMeanMZ()) < (neutronMassPpmAbove / i)+((neutronMassPpmAbove/i)/1e6)*ppm) {
                         if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                             temp.add(chromatogram);
                         }
                     }
                 }
             }
-            if(temp.size()>0){
-                charge = 1;
-            }*/
+            if (temp.size() > 0 && !chargeFound) {
+                charge = i;
+                chargeFound = true;
+            }
         }
+        //If no relevant chromatograms found, assume charge = 1;
+        if(!chargeFound)
+            charge = 1;
     }
 
     /**
