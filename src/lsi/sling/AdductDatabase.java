@@ -178,7 +178,7 @@ public class AdductDatabase {
     }
 
     /**
-     * This method maps each peakcluster in the input peakClusterList, to the peakClusterList of possible adducts it could be.
+     * Maps each peakcluster in the input peakClusterList, to the peakClusterList of possible adducts it could be.
      *
      * @param file The MzXMLFile to map
      * @param dir The location of the adductDatabase folder
@@ -211,6 +211,12 @@ public class AdductDatabase {
         return peakClusterList;
     }
 
+    /**
+     * Maps each alignedPeakCluster to it's possible adducts
+     * @param alignedPeakCluster The AlignedPeakCluster to map
+     * @param dir The location of the adductDatabase folder
+     * @throws IOException Thrown if there is an error reading in the database
+     */
     static void mapClusters(AlignedPeakCluster alignedPeakCluster, String dir) throws IOException {
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 

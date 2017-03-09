@@ -361,10 +361,18 @@ public class PeakCluster implements Clusterable{
         return new double[] {normalisedMZ, normalisedRT};
     }
 
+    /**
+     * Returns the m/z value for the starting chromatogram (the m+0 isotope)
+     * @return the m/z value for the m+0 isotope
+     */
     public double getMainMZ(){
         return chromatograms.get(startingPointIndex).getMeanMZ();
     }
 
+    /**
+     * Returns the RT value for the starting chromatogram (the m+0 isotope)
+     * @return the RT value for the m+0 isotope
+     */
     public double getMainRT(){
         return chromatograms.get(startingPointIndex).getStartingPointRT();
     }
