@@ -180,12 +180,13 @@ public class AdductDatabase {
     /**
      * This method maps each peakcluster in the input peakClusterList, to the peakClusterList of possible adducts it could be.
      *
-     * @param peakClusterList The peakClusterList of adducts to map
-     * @param dir             The location of the adductDatabase folder
+     * @param file The MzXMLFile to map
+     * @param dir The location of the adductDatabase folder
      * @return A modified version of the input list containing the possible adducts
      * @throws IOException Thrown if there is an error reading in the database
      */
-    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> peakClusterList, String dir) throws IOException {
+    static ArrayList<PeakCluster> mapClusters(MzXMLFile file, String dir) throws IOException {
+        ArrayList<PeakCluster> peakClusterList = file.getPeakClusters();
         //wrapper to catch the InterruptedException thrown by the ExecutorService on termination
         try {
             ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -208,5 +209,27 @@ public class AdductDatabase {
             e.printStackTrace();
         }
         return peakClusterList;
+    }
+
+    static void mapClusters(AlignedPeakCluster alignedPeakCluster, String dir) throws IOException {
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+        //reads in the data for that particular charge if it hasn't already been read (and cached)
+        //if the data hasn't already been read, it is cached in the multimap
+        if(!multimap.keySet().contains(alignedPeakCluster.getCharge())){
+            multimap.putAll(alignedPeakCluster.getCharge(), AdductDatabase.readDatabase(dir, alignedPeakCluster.getCharge()));
+        }
+        //Runnable to map the adducts
+        Runnable task = () -> alignedPeakCluster.findAdducts(multimap.get(alignedPeakCluster.getCharge()).stream()
+                .filter(p -> p.getIonCharge() == alignedPeakCluster.getCharge())
+                .collect(Collectors.toList()));
+        executorService.submit(task);
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        //return alignedPeakCluster;
     }
 }

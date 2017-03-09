@@ -73,7 +73,7 @@ public class Main {
         //maps each peak cluster in each file to it's adducts
         //this task is inherrently parallel, so each file is called sequentially and then the function acts concurrently
         for(MzXMLFile file : files) {
-            file.setPeakClusters(AdductDatabase.mapClusters(file.getPeakClusters(), databaseDir));
+            file.setPeakClusters(AdductDatabase.mapClusters(file, databaseDir));
             //file.getPeakClusters() = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
         }
 
@@ -101,6 +101,16 @@ public class Main {
         DBSCANClusterer<PeakCluster> clusterer = new DBSCANClusterer<>(0.005, files.size()-2); //epsilon=0.005 works quite well
         List<Cluster<PeakCluster>> clusterResults = clusterer.cluster(allPeakClusters);
 
+        //'converts' the Cluster objects returned from the DBSCANClusterer to AlignedPeakCluster objects and stores them in alignedPeakClusters
+        ArrayList<AlignedPeakCluster> alignedPeakClusters = new ArrayList<>();
+
+        for(Cluster<PeakCluster> cluster : clusterResults){
+            alignedPeakClusters.add(new AlignedPeakCluster(cluster.getPoints(), 20));
+        }
+        for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+            AdductDatabase.mapClusters(alignedPeakCluster, databaseDir);
+        }
+
         PeakCluster start = files.get(0).getPeakClusters().get(0);
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
@@ -108,8 +118,8 @@ public class Main {
 
     /**
      * For testing
-     * @param clusterArrayList
-     * @throws IOException
+     * @param clusterArrayList The clusters to write
+     * @throws IOException If there is an error with the file handling
      */
     static void writeToCSV(ArrayList<PeakCluster> clusterArrayList) throws IOException {
         CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("test.csv"))));
