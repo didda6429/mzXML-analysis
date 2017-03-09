@@ -1,6 +1,5 @@
 package lsi.sling;
 
-import com.google.common.collect.ArrayListMultimap;
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -13,9 +12,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -28,7 +24,7 @@ public class MzXMLFile {
     ArrayList<IScan> scanArrayList;
     ArrayList<LocalPeak> peakList;
     ArrayList<Chromatogram> chromatograms;
-    public ArrayList<PeakCluster> peakClusters;
+    private ArrayList<PeakCluster> peakClusters;
     String fileLocation;
 
     double threshold = 0;
@@ -187,5 +183,49 @@ public class MzXMLFile {
 
     public ArrayList<LocalPeak> getPeakList() {
         return peakList;
+    }
+
+    /**
+     * This method is used in the main method to map the adducts
+     * @param peakClusters The modified list of PeakClusters to save
+     */
+    public void setPeakClusters(ArrayList<PeakCluster> peakClusters) {
+        this.peakClusters = peakClusters;
+    }
+
+    public ArrayList<PeakCluster> getPeakClusters() {
+        return peakClusters;
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the minimum m/z value from this MzXMLfile
+     */
+    public double getMinMZ(){
+        return scanArrayList.stream().mapToDouble(IScan::getBasePeakMz).min().getAsDouble();
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the maximum m/z value from this MzXMLfile
+     */
+    public double getMaxMZ(){
+        return scanArrayList.stream().mapToDouble(IScan::getBasePeakMz).max().getAsDouble();
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the minimum RT value from this MzXMLfile
+     */
+    public double getMinRT(){
+        return scanArrayList.stream().mapToDouble(IScan::getRt).min().getAsDouble();
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the maximum RT value from this MzXMLfile
+     */
+    public double getMaxRT(){
+        return scanArrayList.stream().mapToDouble(IScan::getRt).max().getAsDouble();
     }
 }

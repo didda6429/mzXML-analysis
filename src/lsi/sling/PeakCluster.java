@@ -3,6 +3,7 @@ package lsi.sling;
 import com.google.common.collect.ArrayListMultimap;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
+import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
  * This Class represents a peak cluster (i.e. a peak and it's isotopes).
  * @author Adithya Diddapur
  */
-public class PeakCluster {
+public class PeakCluster implements Clusterable{
 
     private final static double NEUTRON_MASS = 1.00866491588;
 
@@ -31,6 +32,10 @@ public class PeakCluster {
     //determines the m/z window in which to find adducts
     private double targetMZAbove;
     private double targetMZBelow;
+    private boolean inAlignedCluster;
+    //Used for the calculating the distance during the DBSCAN clustering
+    private double normalisedMZ;
+    private double normalisedRT;
 
     /**
      * Creates a new peakcluster from a given starting point. This includes estimating the charge and isotopes. Also, after
@@ -40,12 +45,13 @@ public class PeakCluster {
      * @param mzXMLFile The MzXMLFile to look through for isotopes
      */
     public PeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) {
+        inAlignedCluster = false;
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
         neutronMassPpmAbove = ppmAbove(NEUTRON_MASS, ppm);
         neutronMassPpmBelow = ppmBelow(NEUTRON_MASS, ppm);
-        checkCharge(startingPoint, mzXMLFile); //estimates the charge
+        checkCharge(startingPoint, mzXMLFile, 3, ppm); //estimates the charge, considering 3 as the maximum (inclusive)
         checkAboveOrBelow(startingPoint,false, ppm, mzXMLFile); //looks for isotopes below the starting m/z
         for(int i = tempChroma.size(); i>0; i--){
             chromatograms.add(tempChroma.get(i-1));
@@ -177,45 +183,40 @@ public class PeakCluster {
     }
 
     /**
-     * This method checks the charge of a peak cluster by looking for peaks adjacent to the starting point at the mz+-0.5
-     * locations. If it finds something, the charge is set to 2 and if it finds nothing the charge is set to 1. Note,
-     * if the charge!=2, it does NOT explicitly look for another chromatogram at the mz+-1 locations. However, this
-     * functionality does exist but is currently commented out of the code to improve performance and reliability.
-     * @param startingPoint the starting Chromatogram
+     * This method checks the charge of a PeakCluster by looking in a nearby m/z and RT window for chromatograms which could be
+     * the isotopes of the starting point. It can check for arbitrarily large charge values, and iterates down to 1 until
+     * it finds something. If it doesn't find anything, the charge is assumed to be 1.
+     * @param startingPoint The starting Chromatogram
+     * @param mzXMLFile The MzXMLFile in which to look for nearby chromatograms
+     * @param maxCharge The maximum charge value to consider
+     * @param ppm The ppm tolerance to use when looking for candidate chromatograms
      */
-    private void checkCharge(Chromatogram startingPoint, MzXMLFile mzXMLFile){
+    private void checkCharge(Chromatogram startingPoint, MzXMLFile mzXMLFile, int maxCharge, double ppm){
+        boolean chargeFound = false;
         double RT = startingPoint.getStartingPointRT();
         double inten = startingPoint.getStartingPointIntensity();
         double mz = startingPoint.getMeanMZ();
         ArrayList<Chromatogram> temp = new ArrayList();
-        //This for loop checks for doubly charged isotopes (difference in mz = 0.5)
-        for (Chromatogram chromatogram : mzXMLFile.chromatograms){
-            if(!chromatogram.equals(startingPoint)) {
-                //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
-                if(Math.abs(mz-chromatogram.getMeanMZ())< neutronMassPpmAbove /2){
-                    if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
-                        temp.add(chromatogram);
-                    }
-                }
-            }
-        }
-        if(temp.size()>0){
-            charge = 2;
-        } else {
-            charge = 1;
-            /*for (Chromatogram chromatogram : Main.chromatograms){
-                if(!chromatogram.equals(startingPoint)) {
-                    if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove) {
+        //Updated to check to arbitrarily many charges
+        for(int i = maxCharge; i > 0; i--) {
+            for (Chromatogram chromatogram : mzXMLFile.chromatograms) {
+                if (!chromatogram.equals(startingPoint)) {
+                    //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
+                    if (Math.abs(mz - chromatogram.getMeanMZ()) < (neutronMassPpmAbove / i)+((neutronMassPpmAbove/i)/1e6)*ppm) {
                         if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                             temp.add(chromatogram);
                         }
                     }
                 }
             }
-            if(temp.size()>0){
-                charge = 1;
-            }*/
+            if (temp.size() > 0 && !chargeFound) {
+                charge = i;
+                chargeFound = true;
+            }
         }
+        //If no relevant chromatograms found, assume charge = 1;
+        if(!chargeFound)
+            charge = 1;
     }
 
     /**
@@ -246,7 +247,7 @@ public class PeakCluster {
      * Returns the calculated charge of the cluster
      * @return the charge of the cluster
      */
-    int getCharge() {return charge;}
+    public int getCharge() {return charge;}
 
     int getStartingPointIndex() { return startingPointIndex;}
 
@@ -263,6 +264,18 @@ public class PeakCluster {
             if (a.getResultMZ() > targetMZAbove) break;
         }
         this.adductList = temp;
+    }
+
+    /**
+     * Sets the value of the flag inAlignedCluster to true. Once it has been set as true, there is no way to turn it
+     * back to false. This is to ensure the integrity of the data.
+     */
+    void setInAlignedCluster(){
+        inAlignedCluster = true;
+    }
+
+    boolean getInAlignedCluster(){
+        return inAlignedCluster;
     }
 
     /**
@@ -287,7 +300,7 @@ public class PeakCluster {
             }
         }
         //filters out the invalid peakClusters (based on starting point)
-        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        clusters = (ArrayList<PeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
         //maps the clusters to their adducts
         clusters = mapClusters(clusters, adductDir);
         return clusters;
@@ -317,5 +330,45 @@ public class PeakCluster {
         executorService.shutdown();
         executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
         return list;
+    }
+
+    /**
+     * Given the input parameters, rescales the m/z and RT values for this peak cluster to enable the use of the euclidean distance
+     * in the clustering algorithm.
+     * @param MZMax The maximum m/z value across the MzXMLFiles
+     * @param MZMin The minimum m/z value across the MzXMLFiles
+     * @param RTMax The maximum RT value across the MzXMLFiles
+     * @param RTMin The minimum RT value across the MzXMLFiles
+     */
+    public void setRescaledValues(double MZMax, double MZMin, double RTMax, double RTMin){
+        double mz = chromatograms.get(startingPointIndex).getMeanMZ();
+        normalisedMZ = (mz-MZMin)/(MZMax-MZMin);
+        double rt = chromatograms.get(startingPointIndex).getStartingPointRT();
+        normalisedRT = (rt-RTMin)/(RTMax-RTMin);
+    }
+
+    /**
+     * Required by the Clusterable interface. Used downstream to perform the DBSCAN clustering during the sample alignment step
+     * @return An array containing the m/z and RT values for this peakCluster
+     */
+    @Override
+    public double[] getPoint() {
+        return new double[] {normalisedMZ, normalisedRT};
+    }
+
+    /**
+     * Returns the m/z value for the starting chromatogram (the m+0 isotope)
+     * @return the m/z value for the m+0 isotope
+     */
+    public double getMainMZ(){
+        return chromatograms.get(startingPointIndex).getMeanMZ();
+    }
+
+    /**
+     * Returns the RT value for the starting chromatogram (the m+0 isotope)
+     * @return the RT value for the m+0 isotope
+     */
+    public double getMainRT(){
+        return chromatograms.get(startingPointIndex).getStartingPointRT();
     }
 }

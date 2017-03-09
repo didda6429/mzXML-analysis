@@ -3,6 +3,7 @@ Java project for untargeted mass spec raw peak analysis. In particular, this pro
 algorithms for:
 - Peak Picking
 - Peak Identification
+- Sample Alignment
 - Peak Integration
 
 from raw mzXML files.
@@ -24,5 +25,6 @@ has been implemented.
 Note that the software has been tested against multiple lipidomics mzXML files and appears to work as intended, HOWEVER,
 at this early stage is is difficult to validate it's accuracy (whilst changes are still being made regularly).
 
-##Performance
-This software is highly multi-threaded and is capable of using a virtually unlimited number of cores.
+##Sample Alignment
+So far, a basic Sample Alignment algorithm which uses the euclidean distance to estimate the true M/Z and RT values has
+been implemented. This algorithm uses the median position to estimate the true values.
