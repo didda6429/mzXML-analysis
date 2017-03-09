@@ -26,5 +26,6 @@ Note that the software has been tested against multiple lipidomics mzXML files a
 at this early stage is is difficult to validate it's accuracy (whilst changes are still being made regularly).
 
 ##Sample Alignment
-So far, a basic Sample Alignment algorithm which uses the euclidean distance to estimate the true M/Z and RT values has
-been implemented. This algorithm uses the median position to estimate the true values.
+Sample Alignment is achieved by using the DBSCAN density-based clustering algorithm (from apache.commons.math) across all
+the datasets, to find which ones correspond to each other. These clusters are then aligned with each other to form a 
+m/z and RT centroid for the theoretical expected location of that peak.
