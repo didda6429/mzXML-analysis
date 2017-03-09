@@ -87,10 +87,11 @@ public class Main {
         }
 
         //Finds the max and min RT and m/z values to use when rescaling the locations of the clusters (to use the euclidean distance)
-        double mzMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).min().getAsDouble();
-        double mzMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).max().getAsDouble();
-        double rtMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).min().getAsDouble();
-        double rtMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).max().getAsDouble();
+        //If there is an error in the stream (the min or max can't be found), return -1
+        double mzMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).min().orElse(-1);
+        double mzMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).max().orElse(-1);
+        double rtMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).min().orElse(-1);
+        double rtMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).max().orElse(-1);
 
         //Sets the rescaled values (to use the euclidean distance when clustering)
         for(PeakCluster cluster : allPeakClusters){
@@ -111,7 +112,6 @@ public class Main {
             AdductDatabase.mapClusters(alignedPeakCluster, databaseDir);
         }
 
-        PeakCluster start = files.get(0).getPeakClusters().get(0);
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
     }
