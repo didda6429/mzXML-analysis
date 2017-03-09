@@ -3,6 +3,7 @@ package lsi.sling;
 import com.google.common.collect.ArrayListMultimap;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
+import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
  * This Class represents a peak cluster (i.e. a peak and it's isotopes).
  * @author Adithya Diddapur
  */
-public class PeakCluster {
+public class PeakCluster implements Clusterable{
 
     private final static double NEUTRON_MASS = 1.00866491588;
 
@@ -32,6 +33,9 @@ public class PeakCluster {
     private double targetMZAbove;
     private double targetMZBelow;
     private boolean inAlignedCluster;
+    //Used for the calculating the distance during the DBSCAN clustering
+    private double normalisedMZ;
+    private double normalisedRT;
 
     /**
      * Creates a new peakcluster from a given starting point. This includes estimating the charge and isotopes. Also, after
@@ -331,5 +335,37 @@ public class PeakCluster {
         executorService.shutdown();
         executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
         return list;
+    }
+
+    /**
+     * Given the input parameters, rescales the m/z and RT values for this peak cluster to enable the use of the euclidean distance
+     * in the clustering algorithm.
+     * @param MZMax The maximum m/z value across the MzXMLFiles
+     * @param MZMin The minimum m/z value across the MzXMLFiles
+     * @param RTMax The maximum RT value across the MzXMLFiles
+     * @param RTMin The minimum RT value across the MzXMLFiles
+     */
+    public void setRescaledValues(double MZMax, double MZMin, double RTMax, double RTMin){
+        double mz = chromatograms.get(startingPointIndex).getMeanMZ();
+        normalisedMZ = (mz-MZMin)/(MZMax-MZMin);
+        double rt = chromatograms.get(startingPointIndex).getStartingPointRT();
+        normalisedRT = (rt-RTMin)/(RTMax-RTMin);
+    }
+
+    /**
+     * Required by the Clusterable interface. Used downstream to perform the DBSCAN clustering during the sample alignment step
+     * @return An array containing the m/z and RT values for this peakCluster
+     */
+    @Override
+    public double[] getPoint() {
+        return new double[] {normalisedMZ, normalisedRT};
+    }
+
+    public double getMainMZ(){
+        return chromatograms.get(startingPointIndex).getMeanMZ();
+    }
+
+    public double getMainRT(){
+        return chromatograms.get(startingPointIndex).getStartingPointRT();
     }
 }

@@ -1,10 +1,16 @@
 package lsi.sling;
 
+import com.opencsv.CSVWriter;
+import org.apache.commons.math3.ml.clustering.Cluster;
+import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import umich.ms.fileio.exceptions.FileParsingException;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -71,6 +77,8 @@ public class Main {
             //file.getPeakClusters() = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
         }
 
+
+
         //ExecutorService service = Executors.newFixedThreadPool(8);
         //for (MzXMLFile file : files) {
             //file.chromatograms = Chromatogram.createChromatograms(file);
@@ -102,16 +110,45 @@ public class Main {
         //THE FOLLOWING CODE CHUNK DEALS WITH THE SAMPLE ALIGNMENT PROCESS
 
         ArrayList<AlignedPeakCluster> alignedPeakClusters = new ArrayList<>();
-        for(PeakCluster cluster : files.get(0).getPeakClusters()){
-            alignedPeakClusters.add(AlignedPeakCluster.alignPeaks(new ArrayList<>(files.subList(1, files.size())), cluster, 100, 0.5));
+        ArrayList<PeakCluster> allPeakClusters = new ArrayList<>();
+        //Stores ALL peak clusters across all samples in a single list for downstream clustering and alignment
+        for(MzXMLFile file : files){
+            for(PeakCluster cluster : file.getPeakClusters()) {
+                allPeakClusters.add(cluster);
+            }
         }
+
+        //Finds the max and min RT and m/z values to use when rescaling the locations of the clusters (to use the euclidean distance)
+        double mzMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).min().getAsDouble();
+        double mzMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).max().getAsDouble();
+        double rtMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).min().getAsDouble();
+        double rtMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).max().getAsDouble();
+
+        //Sets the rescaled values (to use the euclidean distance when clustering)
+        for(PeakCluster cluster : allPeakClusters){
+            cluster.setRescaledValues(mzMax, mzMin, rtMax, rtMin);
+        }
+
+        //Peforms the clustering and stores the results in a list
+        DBSCANClusterer<PeakCluster> clusterer = new DBSCANClusterer<PeakCluster>(0.005, files.size()-2); //epsilon=0.005 works quite well
+        List<Cluster<PeakCluster>> clusterResults = clusterer.cluster(allPeakClusters);
+
         //for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
         //    alignedPeakCluster.setPossibleClusters(AdductDatabase.mapAlignedClusters());
         //}
-        alignedPeakClusters = AdductDatabase.mapAlignedClusters(alignedPeakClusters, databaseDir);
+        //alignedPeakClusters = AdductDatabase.mapAlignedClusters(alignedPeakClusters, databaseDir);
         PeakCluster start = files.get(0).getPeakClusters().get(0);
         AlignedPeakCluster.alignPeaks(new ArrayList<>(files.subList(1,files.size())), start, 100, 0.5);
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
+    }
+
+    static void writeToCSV(ArrayList<PeakCluster> clusterArrayList) throws IOException {
+        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("test.csv"))));
+
+        for(PeakCluster cluster : clusterArrayList){
+            csvWriter.writeNext(new String[]{String.valueOf(cluster.getChromatograms().get(cluster.getStartingPointIndex()).getMeanMZ()), String.valueOf(cluster.getChromatograms().get(cluster.getStartingPointIndex()).getStartingPointRT())});
+        }
+        csvWriter.close();
     }
 }

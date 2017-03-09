@@ -196,4 +196,36 @@ public class MzXMLFile {
     public ArrayList<PeakCluster> getPeakClusters() {
         return peakClusters;
     }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the minimum m/z value from this MzXMLfile
+     */
+    public double getMinMZ(){
+        return scanArrayList.stream().mapToDouble(IScan::getBasePeakMz).min().getAsDouble();
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the maximum m/z value from this MzXMLfile
+     */
+    public double getMaxMZ(){
+        return scanArrayList.stream().mapToDouble(IScan::getBasePeakMz).max().getAsDouble();
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the minimum RT value from this MzXMLfile
+     */
+    public double getMinRT(){
+        return scanArrayList.stream().mapToDouble(IScan::getRt).min().getAsDouble();
+    }
+
+    /**
+     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
+     * @return the maximum RT value from this MzXMLfile
+     */
+    public double getMaxRT(){
+        return scanArrayList.stream().mapToDouble(IScan::getRt).max().getAsDouble();
+    }
 }
