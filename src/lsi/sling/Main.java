@@ -93,6 +93,11 @@ public class Main {
         double rtMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).min().orElse(-1);
         double rtMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).max().orElse(-1);
 
+        assert mzMax != -1: "No mzMax";
+        assert mzMin != -1: "No mzMin";
+        assert rtMin != -1: "No rtMin";
+        assert rtMax != -1: "No rtMax";
+
         //Sets the rescaled values (to use the euclidean distance when clustering)
         for(PeakCluster cluster : allPeakClusters){
             cluster.setRescaledValues(mzMax, mzMin, rtMax, rtMin);
