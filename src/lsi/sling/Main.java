@@ -21,8 +21,8 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
 
-//    public static ArrayList<IScan> scanArrayList;
-//    public static ArrayList<LocalPeak> peakList;
+//    public static ArrayList<IScan> ms1scanArrayList;
+//    public static ArrayList<LocalPeak> ms1PeakList;
 //    public static ArrayList<Chromatogram> chromatograms;
 //    public static ArrayList<PeakCluster> peakClusters;
 //    //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
@@ -31,13 +31,18 @@ public class Main {
 //    //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/7264381_RP_pos.mzXML";
 //    //static String location = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/PH697085_pos_IDA.mzXML";
 //    //static String location = "C:\\Users\\adith\\Desktop\\mzxml sample data\\7264381_RP_pos.mzXML";
-    static String databaseDir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
-    static String mzXMLFileDir = "C:/Users/lsiv67/Documents/mzXML Sample Data/DDApos/";
+    //static String databaseDir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
+    static String databaseDir = "D:/lsiv67/mzXML Sample Data/databaseFiles";
+    //static String mzXMLFileDir = "C:/Users/lsiv67/Documents/mzXML Sample Data/DDApos/";
+    //static String mzXMLFileDir = "D:/lsiv67/mzXML Sample Data/DDApos";
+    static String mzXMLFileDir = "D:/lsiv67/mzXML Sample Data/temp";
     //static String mzXMLFileDir = "C:/Users/lsiv67/Documents/mzXML Sample Data";
 //    //static String databaseDir = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/database";
 //
-    static String adductFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv";
-    static String compoundFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv";
+    //static String adductFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv";
+    static String adductFile = "D:/lsiv67/mzXML Sample Data/Adducts.csv";
+    //static String compoundFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv";
+    static String compoundFile = "D:/lsiv67 mzXML Sample Data/Database.csv";
 //    //static String adductFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Adducts.csv";
 //    //static String compoundFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Database.csv";
 //
@@ -58,7 +63,7 @@ public class Main {
         for(File file : mzXMLFiles){
             Runnable task = () -> {
                 try {
-                    files.add(new MzXMLFile(file.getAbsolutePath(), databaseDir, adductFile, compoundFile));
+                    files.add(new MzXMLFile(file.getAbsolutePath()));
                 } catch (FileParsingException | InterruptedException | IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
@@ -81,9 +86,7 @@ public class Main {
         ArrayList<PeakCluster> allPeakClusters = new ArrayList<>();
         //Stores ALL peak clusters across all samples in a single list for downstream clustering and alignment
         for(MzXMLFile file : files){
-            for(PeakCluster cluster : file.getPeakClusters()) {
-                allPeakClusters.add(cluster);
-            }
+            allPeakClusters.addAll(file.getPeakClusters());
         }
 
         //Finds the max and min RT and m/z values to use when rescaling the locations of the clusters (to use the euclidean distance)
@@ -116,9 +119,25 @@ public class Main {
         for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
             AdductDatabase.mapClusters(alignedPeakCluster, databaseDir);
         }
-
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
+    }
+
+    /**
+     * Writes the results from the clustering algorithm for testing
+     * @param list The returned list from the clustering algorithm
+     * @throws IOException If there is an error with the file handling
+     */
+    static void writeToCSV(List<Cluster<PeakCluster>> list) throws IOException{
+        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("S:/mzXML Sample Data/list.csv"))));
+
+        for(int i=0; i<list.size(); i++){
+            Cluster<PeakCluster> cluster = list.get(i);
+            for(PeakCluster peakCluster : cluster.getPoints()){
+                csvWriter.writeNext(new String[]{String.valueOf(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()), String.valueOf(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getStartingPointRT()), String.valueOf(i)});
+            }
+        }
+        csvWriter.close();
     }
 
     /**
@@ -127,11 +146,12 @@ public class Main {
      * @throws IOException If there is an error with the file handling
      */
     static void writeToCSV(ArrayList<PeakCluster> clusterArrayList) throws IOException {
-        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("test.csv"))));
+        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("S:/mzXML Sample Data/test1.csv"))));
 
         for(PeakCluster cluster : clusterArrayList){
-            csvWriter.writeNext(new String[]{String.valueOf(cluster.getChromatograms().get(cluster.getStartingPointIndex()).getMeanMZ()), String.valueOf(cluster.getChromatograms().get(cluster.getStartingPointIndex()).getStartingPointRT())});
+            csvWriter.writeNext(new String[]{String.valueOf(cluster.getMainMZ()), String.valueOf(cluster.getMainRT())});
         }
         csvWriter.close();
     }
+
 }
