@@ -34,8 +34,8 @@ public class Main {
     //static String databaseDir = "C:/Users/lsiv67/Documents/mzXML Sample Data/databaseFiles";
     static String databaseDir = "D:/lsiv67/mzXML Sample Data/databaseFiles";
     //static String mzXMLFileDir = "C:/Users/lsiv67/Documents/mzXML Sample Data/DDApos/";
-    //static String mzXMLFileDir = "D:/lsiv67/mzXML Sample Data/DDApos";
-    static String mzXMLFileDir = "D:/lsiv67/mzXML Sample Data/temp";
+    static String mzXMLFileDir = "D:/lsiv67/mzXML Sample Data/DDApos";
+    //static String mzXMLFileDir = "D:/lsiv67/mzXML Sample Data/temp";
     //static String mzXMLFileDir = "C:/Users/lsiv67/Documents/mzXML Sample Data";
 //    //static String databaseDir = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/database";
 //
@@ -119,8 +119,23 @@ public class Main {
         for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
             AdductDatabase.mapClusters(alignedPeakCluster, databaseDir);
         }
+
+        //ArrayList<LocalPeak> ms2LocalPeaks = new ArrayList<>();
+        //for(MzXMLFile file : files){
+        //    ms2LocalPeaks.addAll(file.getMs2PeakList());
+        //}
+        //writeLocalPeakListToCSV(ms2LocalPeaks);
+
         System.out.println(System.currentTimeMillis()-time);
         System.out.println("test");
+    }
+
+    static void writeLocalPeakListToCSV(ArrayList<LocalPeak> peakList) throws IOException{
+        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("S:/mzXML Sample Data/localpeak.csv"))));
+        for(LocalPeak localPeak : peakList){
+            csvWriter.writeNext(new String[]{String.valueOf(localPeak.getMZ()), String.valueOf(localPeak.getRT()), String.valueOf(localPeak.getIntensity())});
+        }
+        csvWriter.close();
     }
 
     /**
