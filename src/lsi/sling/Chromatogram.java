@@ -186,7 +186,7 @@ public class Chromatogram{
      * NOTE: This function is crucial to the operation of the Chromatogram data structure and is
      * called by several other functions at higher levels so be careful when modifying it
      *
-     * @param spec      The single spectrum from which to extract a single Chromatogram
+     * @param spec      The single spectrum from which to extract a single LocalPeak
      * @param mean      The value around which the tolerance is centered (this partly defines where the single peak will
      *                  be extracted from
      * @param tol       The tolerance to jitter
@@ -422,7 +422,7 @@ public class Chromatogram{
         //smoothData = curveSmooth.savitzkyGolayPlot((int) (Math.ceil(getRT()[getRT().length-1]-getRT()[0])*8));
         double[][] minima = curveSmooth.getMinimaSavitzkyGolay();
         //pointsOfInflection.clear();
-        ArrayList<Double> temp = new ArrayList();
+        ArrayList<Double> temp = new ArrayList<>();
         for (int i = 0; i < getRT().length; i++) {
             temp.add(getRT()[i]);
         }

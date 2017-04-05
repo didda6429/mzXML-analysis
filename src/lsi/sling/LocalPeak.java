@@ -11,14 +11,14 @@ package lsi.sling;
 public class LocalPeak implements Comparable<LocalPeak> {
 
     private int scanNumber;
-    private double Intensity;
+    private double intensity;
     private double MZ;
     private double RT;
     private boolean isUsed;
+    private int msLevel;
 
     /**
-     * The only constructor for the class, requiring all the data needed. I won't be making another constructor
-     * because this data structure becomes meaningless without all of the data.
+     * Constructor which doesn't take the mslevel as one of its inputs. In this case, the msLevel is defaulted to 1.
      *
      * @param scan the scan number
      * @param inten the intensity
@@ -27,10 +27,29 @@ public class LocalPeak implements Comparable<LocalPeak> {
      */
     public LocalPeak(int scan, double inten, double massCharge, double retentionTime){
         scanNumber = scan;
-        Intensity = inten;
+        intensity = inten;
         MZ = massCharge;
         RT = retentionTime;
         isUsed = false;
+        msLevel = 1; //defaults to 1 if not provided
+    }
+
+    /**
+     * Constructor which takes in and then populates all of the fields in this class.
+     * @param scan the scan number
+     * @param inten the intensity
+     * @param massCharge the m/z ratio value
+     * @param retentionTime the retention time of the scan
+     * @param msLvl the msLevel of the scan (e.g. 1 or 2 for ms1 or ms2 data). Note that this value must always be positive.
+     */
+    public LocalPeak(int scan, double inten, double massCharge, double retentionTime, int msLvl){
+        scanNumber = scan;
+        intensity = inten;
+        MZ = massCharge;
+        RT = retentionTime;
+        isUsed = false;
+        if(msLvl<1) throw new IllegalArgumentException("msLvl must be positive");
+        msLevel = msLvl;
     }
 
     /**
@@ -46,7 +65,7 @@ public class LocalPeak implements Comparable<LocalPeak> {
      * @return the intensity as a double
      */
     public double getIntensity(){
-        return Intensity;
+        return intensity;
     }
 
     /**
