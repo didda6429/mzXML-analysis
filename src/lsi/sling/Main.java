@@ -127,6 +127,7 @@ public class Main {
         //writeLocalPeakListToCSV(ms2LocalPeaks);
 
         System.out.println(System.currentTimeMillis()-time);
+        time = System.currentTimeMillis()-time;
         System.out.println("test");
     }
 
