@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
 //"C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML"
@@ -120,15 +121,44 @@ public class Main {
             AdductDatabase.mapClusters(alignedPeakCluster, databaseDir);
         }
 
+        //Cluster the fragments in each individual peakCluster
+        for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+            for(PeakCluster cluster : alignedPeakCluster.getClusters()){
+                cluster.clusterFragments();
+            }
+            //TODO: cluster the fragments within each peakCluster
+            //for now just collates them
+
+            
+        }
+
         //ArrayList<LocalPeak> ms2LocalPeaks = new ArrayList<>();
         //for(MzXMLFile file : files){
         //    ms2LocalPeaks.addAll(file.getMs2PeakList());
         //}
         //writeLocalPeakListToCSV(ms2LocalPeaks);
 
+        ArrayList<AlignedPeakCluster> withFragments = numberPeakClustersWithFragments(alignedPeakClusters);
+
+        //writeAlignedPeakClusterFragmentsToCSV(alignedPeakClusters.get(1), "D:/lsiv67/mzXML Sample Data/alignedTestData/");
+        //for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+        //    writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/alignedTestData/");
+        //}
+        //writeMS2PeakClustersToCSV(allPeakClusters, "D:/lsiv67/mzXML Sample Data/testdata/");
+        ArrayList<PeakCluster> clustersWithFragments = (ArrayList<PeakCluster>) allPeakClusters.stream().filter(p -> p.getFragmentClusters().size()>0).collect(Collectors.toList()); //for debugging
         System.out.println(System.currentTimeMillis()-time);
         time = System.currentTimeMillis()-time;
         System.out.println("test");
+    }
+
+    static ArrayList<AlignedPeakCluster> numberPeakClustersWithFragments(ArrayList<AlignedPeakCluster> peakClusters){
+        ArrayList<AlignedPeakCluster> toReturn = new ArrayList<>();
+        for(AlignedPeakCluster alignedPeakCluster : peakClusters){
+            if(alignedPeakCluster.getClusters().stream().filter(p -> p.getFragmentClusters().size()>0).count()>0){
+                toReturn.add(alignedPeakCluster);
+            }
+        }
+        return toReturn;
     }
 
     static void writeLocalPeakListToCSV(ArrayList<LocalPeak> peakList) throws IOException{
@@ -137,6 +167,33 @@ public class Main {
             csvWriter.writeNext(new String[]{String.valueOf(localPeak.getMZ()), String.valueOf(localPeak.getRT()), String.valueOf(localPeak.getIntensity())});
         }
         csvWriter.close();
+    }
+
+    static void writeAlignedPeakClusterFragmentsToCSV(AlignedPeakCluster alignedPeakCluster, String folder) throws IOException{
+        int i = 0;
+        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + alignedPeakCluster.getMeanMZ() + ".csv"))));
+        for(PeakCluster cluster : alignedPeakCluster.getClusters()){
+            csvWriter.writeNext(new String[]{String.valueOf(cluster.getMainMZ()), String.valueOf(cluster.getMainRT()), "1", String.valueOf(i)});
+            for(MS2Cluster fragmentCluster : cluster.getFragmentClusters()){
+                csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getMeanMZ()), String.valueOf(fragmentCluster.getMeanRT()), "2", String.valueOf(i)});
+            }
+            i++;
+        }
+        csvWriter.close();
+    }
+
+    static void writeMS2PeakClustersToCSV(ArrayList<PeakCluster> peakClusters, String folder) throws IOException{
+        for(PeakCluster peakCluster : peakClusters) {
+            if(peakCluster.getMainChromatogramFragments().size()>0) {
+                CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + peakCluster.getMainMZ() + ".csv"))));
+                csvWriter.writeNext(new String[]{String.valueOf(peakCluster.getMainMZ()), String.valueOf(peakCluster.getMainRT()), String.valueOf(peakCluster.getMainIntensity()),"1"});
+                ArrayList<MS2Fragment> fragmentsToWrite = peakCluster.getMainChromatogramFragments();
+                for (MS2Fragment fragment : fragmentsToWrite) {
+                    csvWriter.writeNext(new String[]{String.valueOf(fragment.getMZ()), String.valueOf(fragment.getRT()), String .valueOf(fragment.getIntensity()), "2"});
+                }
+                csvWriter.close();
+            }
+        }
     }
 
     /**

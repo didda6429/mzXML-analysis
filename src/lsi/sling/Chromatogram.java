@@ -507,4 +507,12 @@ public class Chromatogram{
         return inCluster;
     }
 
+    public ArrayList<MS2Fragment> getFragments(){
+        ArrayList<MS2Fragment> toReturn = new ArrayList<>();
+        for(LocalPeak localPeak : intensityScanPairs){
+            toReturn.addAll(localPeak.getFragments());
+        }
+        return toReturn;
+    }
+
 }

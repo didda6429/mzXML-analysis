@@ -3,7 +3,9 @@ package lsi.sling;
 import com.google.common.collect.ArrayListMultimap;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
+import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 import java.io.IOException;
@@ -36,6 +38,8 @@ public class PeakCluster implements Clusterable{
     //Used for the calculating the distance during the DBSCAN clustering
     private double normalisedMZ;
     private double normalisedRT;
+    //Stores the clustered Fragments
+    private ArrayList<MS2Cluster> fragmentClusters;
 
     /**
      * Creates a new peakcluster from a given starting point. This includes estimating the charge and isotopes. Also, after
@@ -46,6 +50,7 @@ public class PeakCluster implements Clusterable{
      */
     PeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) {
         inAlignedCluster = false;
+        fragmentClusters = new ArrayList<>();
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
@@ -372,5 +377,32 @@ public class PeakCluster implements Clusterable{
      */
     double getMainRT(){
         return chromatograms.get(startingPointIndex).getStartingPointRT();
+    }
+
+    /**
+     * Returns all the fragments from the mono-isotopic chromatogram of this PeakCluster
+     * @return an ArrayList<MS2Fragment> containing all the fragments
+     */
+    public ArrayList<MS2Fragment> getMainChromatogramFragments(){
+        ArrayList<MS2Fragment> toReturn = new ArrayList<>();
+        for(LocalPeak localPeak : this.chromatograms.get(startingPointIndex).getIntensityScanPairs()){
+            toReturn.addAll(localPeak.getFragments());
+        }
+        return toReturn;
+    }
+
+    /**
+     * This method clusters the fragments from the mono-isotopic XIC
+     */
+    public void clusterFragments(){
+        DBSCANClusterer<MS2Fragment> clusterer = new DBSCANClusterer<>(0.7, 10); //Refine these values
+        List<Cluster<MS2Fragment>> clusterResults = clusterer.cluster(this.getMainChromatogramFragments());
+        for(Cluster<MS2Fragment> cluster : clusterResults){
+            fragmentClusters.add(new MS2Cluster((ArrayList<MS2Fragment>) cluster.getPoints()));
+        }
+    }
+
+    ArrayList<MS2Cluster> getFragmentClusters(){
+        return fragmentClusters;
     }
 }

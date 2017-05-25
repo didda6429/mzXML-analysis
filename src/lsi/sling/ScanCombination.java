@@ -24,9 +24,9 @@ public class ScanCombination {
     /**
      * Initialises the object with the ms1Scan and the ppm to use when mapping the ms2 peaks. The intention is for the
      * ms1Scans to be added later on.
-     * @param ms1scan The initial ms1 scna which all ms2Scans 'belong' to
+     * @param ms1scan The initial ms1 scan which all ms2Scans 'belong' to
      * @param ppm The ppm to use when mapping the ms2Peaks
-     * @param ms1ScanNum The scan number of the ms1 scan (ignoring the ms2 scan numbers). This is used when creating the chromatograms.
+     * @param ms1ScanNum The 'corrected' scan number of the ms1 scan (ignoring the ms2 scan numbers). This is used when creating the chromatograms.
      */
     public ScanCombination(IScan ms1scan, int ppm, int ms1ScanNum){
         assert ms1scan.getNum() == 1; //checks that the scan really is a ms1 scan

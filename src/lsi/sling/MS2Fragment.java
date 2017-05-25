@@ -1,11 +1,13 @@
 package lsi.sling;
 
+import org.apache.commons.math3.ml.clustering.Clusterable;
+
 /**
  * This class represents an MS2 peak. it is analagous to an MS2 'LocalPeak' object
  *
  * @author Adithya Diddapur
  */
-public class MS2Fragment {
+public class MS2Fragment implements Clusterable {
 
     private double intensity;
     private double MZ;
@@ -46,5 +48,15 @@ public class MS2Fragment {
 
     public void setRT(double RT) {
         this.RT = RT;
+    }
+
+    /**
+     * Implements the required method for the clusterable interface. This is used when clustering the fragments in
+     * each PeakCluster in order to identify the characteristic fragments.
+     * @return An array containing the m/z and rt values of the current MS2Fragment
+     */
+    @Override
+    public double[] getPoint() {
+        return new double[]{MZ, RT};
     }
 }
