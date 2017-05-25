@@ -1,4 +1,4 @@
-package lsi.sling;
+package lsi.sling.FragmentHandling;
 
 import java.util.ArrayList;
 
@@ -16,21 +16,21 @@ public class MS2Cluster {
      * by the DBScan clustering algorithm (in the PeakCluster class).
      * @param inputFragments The input list of MS2Fragments which all belong to the same cluster
      */
-    MS2Cluster(ArrayList<MS2Fragment> inputFragments){
+    public MS2Cluster(ArrayList<MS2Fragment> inputFragments){
         fragments = inputFragments;
         meanMZ = inputFragments.stream().mapToDouble(MS2Fragment::getMZ).summaryStatistics().getAverage();
         meanRT = inputFragments.stream().mapToDouble(MS2Fragment::getRT).summaryStatistics().getAverage();
     }
 
-    ArrayList<MS2Fragment> getFragments(){
+    public ArrayList<MS2Fragment> getFragments(){
         return fragments;
     }
 
-    double getMeanMZ(){
+    public double getMeanMZ(){
         return meanMZ;
     }
 
-    double getMeanRT(){
+    public double getMeanRT(){
         return meanRT;
     }
 }

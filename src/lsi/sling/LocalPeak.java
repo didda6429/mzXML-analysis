@@ -1,5 +1,7 @@
 package lsi.sling;
 
+import lsi.sling.FragmentHandling.MS2Fragment;
+
 import java.util.ArrayList;
 
 /**

@@ -1,5 +1,10 @@
 package lsi.sling;
 
+import lsi.sling.FragmentHandling.AlignedFragmentCluster;
+import lsi.sling.FragmentHandling.ClusteredAlignedFragmentCluster;
+import lsi.sling.FragmentHandling.MS2Cluster;
+import org.apache.commons.math3.ml.clustering.Cluster;
+import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.stat.StatUtils;
 
 import java.util.ArrayList;
@@ -18,6 +23,9 @@ public class AlignedPeakCluster {
     private int charge;
     private List<Adduct> adductList;
 
+    private ArrayList<AlignedFragmentCluster> alignedFragmentClusters;
+    private ArrayList<ClusteredAlignedFragmentCluster> characteristicFragments;
+
     private double targetMZAbove;
     private double targetMZBelow;
 
@@ -32,8 +40,8 @@ public class AlignedPeakCluster {
     AlignedPeakCluster(List<PeakCluster> clusterList, int ppm){
         clusters = (ArrayList<PeakCluster>) clusterList;
         //Aligns the m/z and RT values
-        meanMZ = clusters.stream().mapToDouble(PeakCluster::getMainMZ).average().orElse(-1); //if there is an error in the stream, return 0
-        meanRT = clusters.stream().mapToDouble(PeakCluster::getMainRT).average().orElse(-1); //if there is an error in the stream, return 0
+        meanMZ = clusters.stream().mapToDouble(PeakCluster::getMainMZ).average().orElse(-1); //if there is an error in the stream, return -1
+        meanRT = clusters.stream().mapToDouble(PeakCluster::getMainRT).average().orElse(-1); //if there is an error in the stream, return -1
         int uniqueValues = clusters.stream().mapToInt(PeakCluster::getCharge).distinct().toArray().length;
         if(uniqueValues==1){
             charge = clusters.get(0).getCharge();
@@ -58,6 +66,32 @@ public class AlignedPeakCluster {
             }
             if(a.getResultMZ() > targetMZAbove) break;
         }
+    }
+
+    /**
+     * This method clusters the fragments in the PeakCluster objects to find the characteristic fragments for this
+     * AlignedPeakCluster.
+     */
+    void clusterFragments(){
+        alignedFragmentClusters = new ArrayList<>();
+        //Starts off by aligning the fragment M/Zs to correct for the RT drift
+        for(PeakCluster cluster : clusters){
+            for(MS2Cluster ms2Cluster : cluster.getFragmentClusters()){
+                alignedFragmentClusters.add(new AlignedFragmentCluster(ms2Cluster, cluster.getMainRT()-meanRT));
+            }
+        }
+        //Now let's cluster them based only on the M/Z (in 1 dimension)
+        DBSCANClusterer<AlignedFragmentCluster> clusterer = new DBSCANClusterer<>(1, 0); //0 means only a single point
+        List<Cluster<AlignedFragmentCluster>> clusterResults = clusterer.cluster(alignedFragmentClusters);
+        //And store the clusters
+        characteristicFragments = new ArrayList<>();
+        for(Cluster<AlignedFragmentCluster> cluster : clusterResults){
+            characteristicFragments.add(new ClusteredAlignedFragmentCluster(cluster));
+        }
+    }
+
+    public ArrayList<AlignedFragmentCluster> getAlignedFragmentClusters(){
+        return alignedFragmentClusters;
     }
 
     public void setAdductList(List<Adduct> list){

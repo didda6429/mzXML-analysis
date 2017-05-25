@@ -1,6 +1,8 @@
 package lsi.sling;
 
 import com.opencsv.CSVWriter;
+import lsi.sling.FragmentHandling.AlignedFragmentCluster;
+import lsi.sling.FragmentHandling.MS2Fragment;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import umich.ms.fileio.exceptions.FileParsingException;
@@ -128,7 +130,7 @@ public class Main {
             }
             //TODO: cluster the fragments within each peakCluster
             //for now just collates them
-
+            alignedPeakCluster.clusterFragments();
             
         }
 
@@ -138,12 +140,13 @@ public class Main {
         //}
         //writeLocalPeakListToCSV(ms2LocalPeaks);
 
-        ArrayList<AlignedPeakCluster> withFragments = numberPeakClustersWithFragments(alignedPeakClusters);
+        //ArrayList<AlignedPeakCluster> withFragments = numberPeakClustersWithFragments(alignedPeakClusters);
 
         //writeAlignedPeakClusterFragmentsToCSV(alignedPeakClusters.get(1), "D:/lsiv67/mzXML Sample Data/alignedTestData/");
-        //for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
-        //    writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/alignedTestData/");
-        //}
+        for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+            //writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/alignedTestData/");
+            writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/AlignedFragments/");
+        }
         //writeMS2PeakClustersToCSV(allPeakClusters, "D:/lsiv67/mzXML Sample Data/testdata/");
         ArrayList<PeakCluster> clustersWithFragments = (ArrayList<PeakCluster>) allPeakClusters.stream().filter(p -> p.getFragmentClusters().size()>0).collect(Collectors.toList()); //for debugging
         System.out.println(System.currentTimeMillis()-time);
@@ -170,16 +173,23 @@ public class Main {
     }
 
     static void writeAlignedPeakClusterFragmentsToCSV(AlignedPeakCluster alignedPeakCluster, String folder) throws IOException{
-        int i = 0;
-        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + alignedPeakCluster.getMeanMZ() + ".csv"))));
-        for(PeakCluster cluster : alignedPeakCluster.getClusters()){
+        if(alignedPeakCluster.getAlignedFragmentClusters().size()>0) {
+            int i = 0;
+            CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + alignedPeakCluster.getMeanMZ() + ".csv"))));
+            csvWriter.writeNext(new String[]{String.valueOf(alignedPeakCluster.getMeanMZ()), String.valueOf(alignedPeakCluster.getMeanRT()), "1", String.valueOf(i)});
+            for (AlignedFragmentCluster fragmentCluster : alignedPeakCluster.getAlignedFragmentClusters()) {
+                csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getAlignedMZ()), String.valueOf(fragmentCluster.getAlignedRT()), "2", String.valueOf(i)});
+            }
+            i++;
+        /*for(PeakCluster cluster : alignedPeakCluster.getClusters()){
             csvWriter.writeNext(new String[]{String.valueOf(cluster.getMainMZ()), String.valueOf(cluster.getMainRT()), "1", String.valueOf(i)});
             for(MS2Cluster fragmentCluster : cluster.getFragmentClusters()){
                 csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getMeanMZ()), String.valueOf(fragmentCluster.getMeanRT()), "2", String.valueOf(i)});
             }
             i++;
+        }*/
+            csvWriter.close();
         }
-        csvWriter.close();
     }
 
     static void writeMS2PeakClustersToCSV(ArrayList<PeakCluster> peakClusters, String folder) throws IOException{

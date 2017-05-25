@@ -1,5 +1,6 @@
 package lsi.sling;
 
+import lsi.sling.FragmentHandling.MS2Fragment;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;

@@ -1,6 +1,8 @@
 package lsi.sling;
 
 import com.google.common.collect.ArrayListMultimap;
+import lsi.sling.FragmentHandling.MS2Cluster;
+import lsi.sling.FragmentHandling.MS2Fragment;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.ml.clustering.Cluster;
