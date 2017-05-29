@@ -135,6 +135,7 @@ public class MzXMLFile {
 
         //Clears up some memory after it's done using the scanCombinations objects
         scanCombinations.clear();
+        scanCombinations.trimToSize();
         System.gc();
 
 
@@ -239,7 +240,8 @@ public class MzXMLFile {
         for(LocalPeak peak : localPeakList){
             sum += (peak.getIntensity()-mean)*(peak.getIntensity()-mean);
         }
-        sum = sum/ localPeakList.size();
+        sum = sum/(localPeakList.size()-1);
+
         return Math.sqrt(sum);
     }
 

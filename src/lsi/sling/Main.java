@@ -175,8 +175,8 @@ public class Main {
     static void writeAlignedPeakClusterFragmentsToCSV(AlignedPeakCluster alignedPeakCluster, String folder) throws IOException{
         if(alignedPeakCluster.getAlignedFragmentClusters().size()>0) {
             int i = 0;
-            CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + alignedPeakCluster.getMeanMZ() + ".csv"))));
-            csvWriter.writeNext(new String[]{String.valueOf(alignedPeakCluster.getMeanMZ()), String.valueOf(alignedPeakCluster.getMeanRT()), "1", String.valueOf(i)});
+            CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + alignedPeakCluster.getMedianMZ() + ".csv"))));
+            csvWriter.writeNext(new String[]{String.valueOf(alignedPeakCluster.getMedianMZ()), String.valueOf(alignedPeakCluster.getMedianRT()), "1", String.valueOf(i)});
             for (AlignedFragmentCluster fragmentCluster : alignedPeakCluster.getAlignedFragmentClusters()) {
                 csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getAlignedMZ()), String.valueOf(fragmentCluster.getAlignedRT()), "2", String.valueOf(i)});
             }
@@ -184,7 +184,7 @@ public class Main {
         /*for(PeakCluster cluster : alignedPeakCluster.getClusters()){
             csvWriter.writeNext(new String[]{String.valueOf(cluster.getMainMZ()), String.valueOf(cluster.getMainRT()), "1", String.valueOf(i)});
             for(MS2Cluster fragmentCluster : cluster.getFragmentClusters()){
-                csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getMeanMZ()), String.valueOf(fragmentCluster.getMeanRT()), "2", String.valueOf(i)});
+                csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getMedianMZ()), String.valueOf(fragmentCluster.getMedianRT()), "2", String.valueOf(i)});
             }
             i++;
         }*/

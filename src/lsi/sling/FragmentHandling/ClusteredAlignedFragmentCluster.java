@@ -1,6 +1,7 @@
 package lsi.sling.FragmentHandling;
 
 import org.apache.commons.math3.ml.clustering.Cluster;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.ArrayList;
 
@@ -11,8 +12,8 @@ import java.util.ArrayList;
 public class ClusteredAlignedFragmentCluster {
 
     private ArrayList<AlignedFragmentCluster> alignedFragmentClusters;
-    private double meanMZ;
-    private double meanRT;
+    private double medianMZ;
+    private double medianRT;
 
     /**
      * Creates a ClusteredAlignedFragmentCluster given an input Cluster (which is the output from the DBSCAN clustering
@@ -22,19 +23,21 @@ public class ClusteredAlignedFragmentCluster {
     public ClusteredAlignedFragmentCluster(Cluster<AlignedFragmentCluster> cluster){
         alignedFragmentClusters = new ArrayList<>(cluster.getPoints().size());
         alignedFragmentClusters.addAll(cluster.getPoints());
-        meanMZ = alignedFragmentClusters.stream().mapToDouble(AlignedFragmentCluster::getAlignedMZ).average().getAsDouble();
-        meanRT = alignedFragmentClusters.stream().mapToDouble(AlignedFragmentCluster::getAlignedRT).average().getAsDouble();
+        medianMZ = new DescriptiveStatistics(alignedFragmentClusters.stream().mapToDouble(AlignedFragmentCluster::getAlignedMZ).toArray()).getPercentile(50);
+        medianRT = new DescriptiveStatistics(alignedFragmentClusters.stream().mapToDouble(AlignedFragmentCluster::getAlignedRT).toArray()).getPercentile(50);
+        //medianMZ = alignedFragmentClusters.stream().mapToDouble(AlignedFragmentCluster::getAlignedMZ).average().getAsDouble();
+        //medianRT = alignedFragmentClusters.stream().mapToDouble(AlignedFragmentCluster::getAlignedRT).average().getAsDouble();
     }
 
     public ArrayList<AlignedFragmentCluster> getAlignedFragmentClusters() {
         return alignedFragmentClusters;
     }
 
-    public double getMeanMZ() {
-        return meanMZ;
+    public double getMedianMZ() {
+        return medianMZ;
     }
 
-    public double getMeanRT() {
-        return meanRT;
+    public double getMedianRT() {
+        return medianRT;
     }
 }

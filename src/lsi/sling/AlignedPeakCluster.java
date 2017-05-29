@@ -6,6 +6,7 @@ import lsi.sling.FragmentHandling.MS2Cluster;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +19,8 @@ import java.util.List;
 public class AlignedPeakCluster {
 
     private ArrayList<PeakCluster> clusters;
-    private double meanMZ;
-    private double meanRT;
+    private double medianMZ;
+    private double medianRT;
     private int charge;
     private List<Adduct> adductList;
 
@@ -40,8 +41,11 @@ public class AlignedPeakCluster {
     AlignedPeakCluster(List<PeakCluster> clusterList, int ppm){
         clusters = (ArrayList<PeakCluster>) clusterList;
         //Aligns the m/z and RT values
-        meanMZ = clusters.stream().mapToDouble(PeakCluster::getMainMZ).average().orElse(-1); //if there is an error in the stream, return -1
-        meanRT = clusters.stream().mapToDouble(PeakCluster::getMainRT).average().orElse(-1); //if there is an error in the stream, return -1
+        medianMZ = new DescriptiveStatistics(clusters.stream().mapToDouble(PeakCluster::getMainMZ).toArray()).getPercentile(50);
+        medianRT = new DescriptiveStatistics(clusters.stream().mapToDouble(PeakCluster::getMainRT).toArray()).getPercentile(50);
+
+        //medianMZ = clusters.stream().mapToDouble(PeakCluster::getMainMZ).average().orElse(-1); //if there is an error in the stream, return -1
+        //medianRT = clusters.stream().mapToDouble(PeakCluster::getMainRT).average().orElse(-1); //if there is an error in the stream, return -1
         int uniqueValues = clusters.stream().mapToInt(PeakCluster::getCharge).distinct().toArray().length;
         if(uniqueValues==1){
             charge = clusters.get(0).getCharge();
@@ -50,9 +54,10 @@ public class AlignedPeakCluster {
             charge = (int) Math.round(StatUtils.mode(clusters.stream().mapToDouble(PeakCluster::getCharge).toArray())[0]);
         }
 
-        targetMZAbove = meanMZ + (meanMZ/1e6)*ppm;
-        targetMZBelow = meanMZ - (meanMZ/1e6)*ppm;
+        targetMZAbove = medianMZ + (medianMZ /1e6)*ppm;
+        targetMZBelow = medianMZ - (medianMZ /1e6)*ppm;
         adductList = new ArrayList<>();
+        System.gc();
     }
 
     /**
@@ -77,7 +82,7 @@ public class AlignedPeakCluster {
         //Starts off by aligning the fragment M/Zs to correct for the RT drift
         for(PeakCluster cluster : clusters){
             for(MS2Cluster ms2Cluster : cluster.getFragmentClusters()){
-                alignedFragmentClusters.add(new AlignedFragmentCluster(ms2Cluster, cluster.getMainRT()-meanRT));
+                alignedFragmentClusters.add(new AlignedFragmentCluster(ms2Cluster, cluster.getMainRT()- medianRT));
             }
         }
         //Now let's cluster them based only on the M/Z (in 1 dimension)
@@ -102,12 +107,12 @@ public class AlignedPeakCluster {
         return clusters;
     }
 
-    public double getMeanMZ() {
-        return meanMZ;
+    public double getMedianMZ() {
+        return medianMZ;
     }
 
-    public double getMeanRT() {
-        return meanRT;
+    public double getMedianRT() {
+        return medianRT;
     }
 
     public List<Adduct> getAdductList(){

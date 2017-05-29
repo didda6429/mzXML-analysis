@@ -206,7 +206,7 @@ public class PeakCluster implements Clusterable{
         for(int i = maxCharge; i > 0; i--) {
             for (Chromatogram chromatogram : mzXMLFile.chromatograms) {
                 if (!chromatogram.equals(startingPoint)) {
-                    //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
+                    //if (Math.abs(mz - chromatogram.getMedianMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMedianMZ()) > neutronMassPpmBelow/2) {
                     if (Math.abs(mz - chromatogram.getMeanMZ()) < (neutronMassPpmAbove / i)+((neutronMassPpmAbove/i)/1e6)*ppm) {
                         if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                             temp.add(chromatogram);
