@@ -1,5 +1,7 @@
 package lsi.sling.FragmentHandling;
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+
 import java.util.ArrayList;
 
 /**
@@ -8,8 +10,8 @@ import java.util.ArrayList;
 public class LCMS2Cluster {
 
     private ArrayList<LCMS2Fragment> fragments;
-    private double meanMZ;
-    private double meanRT;
+    private double medianMZ;
+    private double medianRT;
 
     /**
      * Creates an LCMS2Cluster with the input list of MS2Fragments. The intention is for the input list to be generated
@@ -18,8 +20,10 @@ public class LCMS2Cluster {
      */
     public LCMS2Cluster(ArrayList<LCMS2Fragment> inputFragments){
         fragments = inputFragments;
-        meanMZ = inputFragments.stream().mapToDouble(LCMS2Fragment::getMZ).summaryStatistics().getAverage();
-        meanRT = inputFragments.stream().mapToDouble(LCMS2Fragment::getRT).summaryStatistics().getAverage();
+        medianMZ = new DescriptiveStatistics(inputFragments.stream().mapToDouble(LCMS2Fragment::getMZ).toArray()).getPercentile(50);
+        medianRT = new DescriptiveStatistics(inputFragments.stream().mapToDouble(LCMS2Fragment::getRT).toArray()).getPercentile(50);
+        //medianMZ = inputFragments.stream().mapToDouble(LCMS2Fragment::getMZ).summaryStatistics().getAverage();
+        //medianRT = inputFragments.stream().mapToDouble(LCMS2Fragment::getRT).summaryStatistics().getAverage();
     }
 
     public ArrayList<LCMS2Fragment> getLCFragments(){
@@ -27,10 +31,10 @@ public class LCMS2Cluster {
     }
 
     double getMZ(){
-        return meanMZ;
+        return medianMZ;
     }
 
     double getRT(){
-        return meanRT;
+        return medianRT;
     }
 }
