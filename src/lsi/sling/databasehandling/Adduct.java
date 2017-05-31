@@ -1,4 +1,4 @@
-package lsi.sling;
+package lsi.sling.databasehandling;
 
 import java.io.Serializable;
 
@@ -31,7 +31,7 @@ public class Adduct implements Comparable<Adduct>, Serializable{
      * @param cCommonName The common name of the compound (without the ion component)
      * @param cSystemicName The systemic name of the compound (without the ion component)
      */
-    public Adduct(String iName, String iMassFunction, double iMass, int iCharge, double cExactmass, double rMZ, String cFormula, String cCommonName, String cSystemicName){
+    Adduct(String iName, String iMassFunction, double iMass, int iCharge, double cExactmass, double rMZ, String cFormula, String cCommonName, String cSystemicName){
         ionName = iName;
         ionMassFunction = iMassFunction;
         ionMass = iMass;

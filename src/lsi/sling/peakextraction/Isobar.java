@@ -1,4 +1,4 @@
-package lsi.sling;
+package lsi.sling.peakextraction;
 
 import java.util.ArrayList;
 
@@ -33,7 +33,7 @@ public class Isobar {
      * @param smooth the smoothed data points corresponding to this isobar
      * @param cluster flag representing whether or not it is part of a cluster (passed from the parent Chromatogram)
      */
-    public Isobar(ArrayList<LocalPeak> scanPairs, double mz, double tol, double thresh, double[] smooth, boolean cluster){
+    Isobar(ArrayList<LocalPeak> scanPairs, double mz, double tol, double thresh, double[] smooth, boolean cluster){
         intensityScanPairs = scanPairs;
         meanMZ = mz;
         tolerance = tol;

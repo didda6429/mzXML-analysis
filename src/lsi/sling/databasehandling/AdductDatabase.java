@@ -1,4 +1,4 @@
-package lsi.sling;
+package lsi.sling.databasehandling;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
@@ -8,6 +8,9 @@ import expr.Expr;
 import expr.Parser;
 import expr.SyntaxException;
 import expr.Variable;
+import lsi.sling.mzxmlfilehandling.MzXMLFile;
+import lsi.sling.peakextraction.AlignedPeakCluster;
+import lsi.sling.peakextraction.LCPeakCluster;
 
 import java.io.*;
 import java.nio.file.FileAlreadyExistsException;
@@ -39,7 +42,7 @@ public class AdductDatabase {
      * @return An ArrayList contining the data from the file
      * @throws IOException If there is an error reading from the file
      */
-    static List<Adduct> readDatabase(String folder, int charge) throws IOException {
+    public static List<Adduct> readDatabase(String folder, int charge) throws IOException {
         System.out.println("Reading in Database for charge = " + charge);
         //streams to read the data in
         FileInputStream fin = new FileInputStream(new File(folder + File.separator + charge + ".adduct"));
@@ -69,7 +72,7 @@ public class AdductDatabase {
      * @return 1 if the file already exists. 0 if a new file was created
      * @throws IOException If there is an error creating the file
      */
-    static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException {
+    public static int createDatabase(String folder, String adductFile, String compoundFile) throws IOException {
         multimap = ArrayListMultimap.create(); //initialises the multimap for use in the mapCluster method
         if (!new File(folder).exists()) { //creates a folder to store all the files for each specific charge
             System.out.println("Database does not exist");
@@ -117,7 +120,7 @@ public class AdductDatabase {
      * @return A List of Adduct objects
      * @throws IOException If there is an error reading the files
      */
-    static private List<Adduct> createListOfAdducts(String adductF, String compoundF) throws IOException {
+    private static List<Adduct> createListOfAdducts(String adductF, String compoundF) throws IOException {
         List<Adduct> temp = Collections.synchronizedList(new ArrayList<Adduct>());
         File adductFile = new File(adductF);
         File compoundFile = new File(compoundF);
@@ -185,12 +188,12 @@ public class AdductDatabase {
      * @return A modified version of the input list containing the possible adducts
      * @throws IOException Thrown if there is an error reading in the database
      */
-    static ArrayList<PeakCluster> mapClusters(MzXMLFile file, String dir) throws IOException {
-        ArrayList<PeakCluster> peakClusterList = file.getPeakClusters();
+    public static ArrayList<LCPeakCluster> mapClusters(MzXMLFile file, String dir) throws IOException {
+        ArrayList<LCPeakCluster> LCPeakClusterList = file.getLCPeakClusters();
         //wrapper to catch the InterruptedException thrown by the ExecutorService on termination
         try {
             ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-            for (PeakCluster cluster : peakClusterList) {
+            for (LCPeakCluster cluster : LCPeakClusterList) {
                 //reads in the data for that particular charge if it hasn't already been read (and cached)
                 //if the data hasn't already been read, it is cached in the multimap
                 if (!multimap.keySet().contains(cluster.getCharge())) {
@@ -208,7 +211,7 @@ public class AdductDatabase {
             System.out.println("InterruptedException e @ mapClusters line 182");
             e.printStackTrace();
         }
-        return peakClusterList;
+        return LCPeakClusterList;
     }
 
     /**
@@ -217,7 +220,7 @@ public class AdductDatabase {
      * @param dir The location of the adductDatabase folder
      * @throws IOException Thrown if there is an error reading in the database
      */
-    static void mapClusters(AlignedPeakCluster alignedPeakCluster, String dir) throws IOException {
+    public static void mapClusters(AlignedPeakCluster alignedPeakCluster, String dir) throws IOException {
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         //reads in the data for that particular charge if it hasn't already been read (and cached)

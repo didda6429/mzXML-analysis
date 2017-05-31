@@ -1,6 +1,7 @@
-package lsi.sling;
+package lsi.sling.peakextraction;
 
 import flanagan.analysis.CurveSmooth;
+import lsi.sling.FragmentHandling.LCMS2Fragment;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
@@ -219,7 +220,7 @@ public class Chromatogram{
      *
      * @return true if it is valid, otherwise false
      */
-    boolean isValidStartingPoint() {
+    public boolean isValidStartingPoint() {
         if (intensityScanPairs.size() > 5) {
             ArrayList<LocalPeak> tempList = intensityScanPairs;
             Collections.sort(tempList);
@@ -296,7 +297,7 @@ public class Chromatogram{
      *
      * @return An ArrayList containing the LocalPeak objects from intensityScanPairs
      */
-    ArrayList<LocalPeak> getIntensityScanPairs() {
+    public ArrayList<LocalPeak> getIntensityScanPairs() {
         return intensityScanPairs;
     }
 
@@ -306,7 +307,7 @@ public class Chromatogram{
      *
      * @return the locations of the turning points
      */
-    ArrayList<Integer> getPointsOfInflection() {
+    public ArrayList<Integer> getPointsOfInflection() {
         return pointsOfInflection;
     }
 
@@ -315,7 +316,7 @@ public class Chromatogram{
      *
      * @return the mean m/z value as a double
      */
-    double getMeanMZ() {
+    public double getMeanMZ() {
         return meanMZ;
     }
 
@@ -324,7 +325,7 @@ public class Chromatogram{
      *
      * @return the tolerance as a double
      */
-    double getTolerance() {
+    public double getTolerance() {
         return tolerance;
     }
 
@@ -333,7 +334,7 @@ public class Chromatogram{
      *
      * @return The threshold as a double
      */
-    double getThreshold() {
+    public double getThreshold() {
         return threshold;
     }
 
@@ -342,7 +343,7 @@ public class Chromatogram{
      *
      * @return the index of the starting point as a integer
      */
-    int getStartingPointIndex() {
+    public int getStartingPointIndex() {
         return startingPointIndex;
     }
 
@@ -351,7 +352,7 @@ public class Chromatogram{
      *
      * @return the RT of the starting point as a double
      */
-    double getStartingPointRT() {
+    public double getStartingPointRT() {
         return startingPointRT;
     }
 
@@ -360,7 +361,7 @@ public class Chromatogram{
      *
      * @return the intensity of the starting point as a double
      */
-    double getStartingPointIntensity() {
+    public double getStartingPointIntensity() {
         return startingPointIntensity;
     }
 
@@ -369,7 +370,7 @@ public class Chromatogram{
      *
      * @return only the intensities from the ion chromatogram
      */
-    double[] getIntensities() {
+    public double[] getIntensities() {
         double[] val = new double[intensityScanPairs.size()];
         for (int i = 0; i < intensityScanPairs.size(); i++) {
             val[i] = intensityScanPairs.get(i).getIntensity();
@@ -382,7 +383,7 @@ public class Chromatogram{
      *
      * @return only the retention times from the ion chromatogram
      */
-    double[] getRT() {
+    public double[] getRT() {
         double[] val = new double[intensityScanPairs.size()];
         for (int i = 0; i < intensityScanPairs.size(); i++) {
             val[i] = intensityScanPairs.get(i).getRT();
@@ -396,7 +397,7 @@ public class Chromatogram{
      *
      * @throws IOException IOException from the file handling stuff
      */
-    void writeToCSV() throws IOException {
+    public void writeToCSV() throws IOException {
         FileWriter writer = new FileWriter("C://Users//lsiv67//Documents//peaks//smoothpeak" + this.getMeanMZ() + "intenis" + this.getStartingPointIntensity() + "rt" + this.getStartingPointRT() + ".csv");
         StringBuilder sb = new StringBuilder();
         double[] inten = this.getIntensities();
@@ -414,7 +415,7 @@ public class Chromatogram{
      * the class variable double[] smoothData. The indices of the smoothed-minima are also stored into pointsOfInflection,
      * replacing whatever values were there.
      */
-    void smoothToFindMinima() {
+    public void smoothToFindMinima() {
         CurveSmooth curveSmooth = new CurveSmooth(this.getRT(), this.getIntensities());
         //At the moment the flanagan plotting program is also called to help evaluate the performance of the filter
         smoothData = curveSmooth.savitzkyGolay((int) (10 * Math.log(this.getRT().length)));
@@ -468,7 +469,7 @@ public class Chromatogram{
      *
      * @return the smoothed dataset as doubles
      */
-    double[] getSmoothData() {
+    public double[] getSmoothData() {
         return smoothData;
     }
 
@@ -476,16 +477,16 @@ public class Chromatogram{
      * This method sets the value of the inCluster flag to true. In normal use, this method should only ever need
      * to be called once in the lifecycle of the Chromatogram object
      */
-    void setInCluster() {
+    public void setInCluster() {
         inCluster = true;
     }
 
     /**
-     * Returns the value of the inCluster flag indicating whether or not the Chromatogram is already part of a PeakCluster
+     * Returns the value of the inCluster flag indicating whether or not the Chromatogram is already part of a LCPeakCluster
      *
      * @return the value of the inCluster flag
      */
-    boolean getInCluster() {
+    public boolean getInCluster() {
         return inCluster;
     }
 
@@ -499,12 +500,20 @@ public class Chromatogram{
     }
 
     /**
-     * Returns whether or not this chromatogram is part of a PeakCluster
+     * Returns whether or not this chromatogram is part of a LCPeakCluster
      *
      * @return a boolean indication whether or not it is part of a cluster
      */
     public boolean isInCluster() {
         return inCluster;
+    }
+
+    public ArrayList<LCMS2Fragment> getFragments(){
+        ArrayList<LCMS2Fragment> toReturn = new ArrayList<>();
+        for(LocalPeak localPeak : intensityScanPairs){
+            toReturn.addAll(localPeak.getFragments());
+        }
+        return toReturn;
     }
 
 }

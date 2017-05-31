@@ -1,9 +1,16 @@
-package lsi.sling;
+package lsi.sling.peakextraction;
 
 import com.google.common.collect.ArrayListMultimap;
+import lsi.sling.FragmentHandling.LCMS2Cluster;
+import lsi.sling.FragmentHandling.LCMS2Fragment;
+import lsi.sling.databasehandling.Adduct;
+import lsi.sling.databasehandling.AdductDatabase;
+import lsi.sling.mzxmlfilehandling.MzXMLFile;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
+import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 import java.io.IOException;
@@ -18,7 +25,7 @@ import java.util.stream.Collectors;
  * This Class represents a peak cluster (i.e. a peak and it's isotopes).
  * @author Adithya Diddapur
  */
-public class PeakCluster implements Clusterable{
+public class LCPeakCluster implements Clusterable{
 
     private final static double NEUTRON_MASS = 1.00866491588;
 
@@ -36,6 +43,8 @@ public class PeakCluster implements Clusterable{
     //Used for the calculating the distance during the DBSCAN clustering
     private double normalisedMZ;
     private double normalisedRT;
+    //Stores the clustered Fragments
+    private ArrayList<LCMS2Cluster> fragmentClusters;
 
     /**
      * Creates a new peakcluster from a given starting point. This includes estimating the charge and isotopes. Also, after
@@ -44,8 +53,9 @@ public class PeakCluster implements Clusterable{
      * @param ppm The precision to use
      * @param mzXMLFile The MzXMLFile to look through for isotopes
      */
-    PeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) {
+    public LCPeakCluster(Chromatogram startingPoint, double ppm, MzXMLFile mzXMLFile) {
         inAlignedCluster = false;
+        fragmentClusters = new ArrayList<>();
         adductList = new ArrayList<>();
         chromatograms = new ArrayList<>();
         tempChroma = new ArrayList<>();
@@ -86,7 +96,7 @@ public class PeakCluster implements Clusterable{
         double mz = previous.getMeanMZ();
         ArrayList<Chromatogram> temp = new ArrayList<>();
         //This loop looks for Chromatograms within the m/z value which correlate to the recursive starting point
-        for (Chromatogram chromatogram : mzXMLFile.chromatograms){
+        for (Chromatogram chromatogram : mzXMLFile.getChromatograms()){
             if(!chromatogram.equals(previous)) {
                 if (Math.abs(Math.abs(mz - chromatogram.getMeanMZ()) - neutronMassPpmAbove /charge) < 0.05 && recursiveCondition(above,chromatogram.getMeanMZ(),mz)) {
                     if (correlateChromatograms(previous, chromatogram) > 0.8) { //uses the correlation function below to determine isobars. The constant still needs to be adjusted.
@@ -96,7 +106,7 @@ public class PeakCluster implements Clusterable{
             }
         }
         if(temp.size()==1){ //if only one possibility is found add it to tempChroma and repeat the recursive loop with it as a starting point
-            mzXMLFile.chromatograms.get(mzXMLFile.chromatograms.indexOf(temp.get(0))).setInCluster();
+            mzXMLFile.getChromatograms().get(mzXMLFile.getChromatograms().indexOf(temp.get(0))).setInCluster();
             tempChroma.add(temp.get(0));
             return checkAboveOrBelow(temp.get(0), above, ppm, mzXMLFile);
         } else if(temp.size()==0) { //if no possibilities are found, return 1
@@ -109,7 +119,7 @@ public class PeakCluster implements Clusterable{
                     index = i;
                 }
             }
-            mzXMLFile.chromatograms.get(mzXMLFile.chromatograms.indexOf(temp.get(index))).setInCluster();
+            mzXMLFile.getChromatograms().get(mzXMLFile.getChromatograms().indexOf(temp.get(index))).setInCluster();
             tempChroma.add(temp.get(index));
             return checkAboveOrBelow(temp.get(0), above, ppm, mzXMLFile);
         } else {
@@ -181,7 +191,7 @@ public class PeakCluster implements Clusterable{
     }
 
     /**
-     * This method checks the charge of a PeakCluster by looking in a nearby m/z and RT window for chromatograms which could be
+     * This method checks the charge of a LCPeakCluster by looking in a nearby m/z and RT window for chromatograms which could be
      * the isotopes of the starting point. It can check for arbitrarily large charge values, and iterates down to 1 until
      * it finds something. If it doesn't find anything, the charge is assumed to be 1.
      * @param startingPoint The starting Chromatogram
@@ -197,9 +207,9 @@ public class PeakCluster implements Clusterable{
         ArrayList<Chromatogram> temp = new ArrayList<>();
         //Updated to check to arbitrarily many charges
         for(int i = maxCharge; i > 0; i--) {
-            for (Chromatogram chromatogram : mzXMLFile.chromatograms) {
+            for (Chromatogram chromatogram : mzXMLFile.getChromatograms()) {
                 if (!chromatogram.equals(startingPoint)) {
-                    //if (Math.abs(mz - chromatogram.getMeanMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMeanMZ()) > neutronMassPpmBelow/2) {
+                    //if (Math.abs(mz - chromatogram.getMedianMZ()) < neutronMassPpmAbove /2 && Math.abs(mz-chromatogram.getMedianMZ()) > neutronMassPpmBelow/2) {
                     if (Math.abs(mz - chromatogram.getMeanMZ()) < (neutronMassPpmAbove / i)+((neutronMassPpmAbove/i)/1e6)*ppm) {
                         if (Math.abs(RT - chromatogram.getStartingPointRT()) < 0.03) { //check this constant
                             temp.add(chromatogram);
@@ -239,25 +249,25 @@ public class PeakCluster implements Clusterable{
      * Returns the chromatograms which make up the peak cluster
      * @return the chromatograms in a Arraylist
      */
-    ArrayList<Chromatogram> getChromatograms() {return chromatograms;}
+    public ArrayList<Chromatogram> getChromatograms() {return chromatograms;}
 
     /**
      * Returns the calculated charge of the cluster
      * @return the charge of the cluster
      */
-    int getCharge() {return charge;}
+    public int getCharge() {return charge;}
 
-    int getStartingPointIndex() { return startingPointIndex;}
+    public int getStartingPointIndex() { return startingPointIndex;}
 
-    double getMainIntensity() {
+    public double getMainIntensity() {
         return chromatograms.get(startingPointIndex).getStartingPointIntensity();
     }
 
     /**
-     * Finds all of the possible adducts for this possible PeakCluster using the list generated by AdductDatabase
+     * Finds all of the possible adducts for this possible LCPeakCluster using the list generated by AdductDatabase
      * @param adducts The list of Adducts of the same charge
      */
-    void findAdducts(List adducts) {
+    public void findAdducts(List adducts) {
         ArrayList<Adduct> temp = new ArrayList<>();
         for (Adduct a : (Iterable<Adduct>) adducts) {
             if (a.getResultMZ() < targetMZAbove && a.getResultMZ() > targetMZBelow) {
@@ -272,11 +282,11 @@ public class PeakCluster implements Clusterable{
      * Sets the value of the flag inAlignedCluster to true. Once it has been set as true, there is no way to turn it
      * back to false. This is to ensure the integrity of the data.
      */
-    void setInAlignedCluster(){
+    public void setInAlignedCluster(){
         inAlignedCluster = true;
     }
 
-    boolean getInAlignedCluster(){
+    public boolean getInAlignedCluster(){
         return inAlignedCluster;
     }
 
@@ -286,45 +296,45 @@ public class PeakCluster implements Clusterable{
      * method in the MzXMLFile class.
      * @param file The mzXML file to loop through
      * @param adductDir The folder containing the adduct database
-     * @return An ArrayList<PeakCluster>
+     * @return An ArrayList<LCPeakCluster>
      * @throws IOException Thrown if there is a problem reading in the database information
      * @throws ClassNotFoundException Thrown if there is a problem reading in the database information
      * @throws InterruptedException Thrown if there is a problem with the concurrency
      */
     @Deprecated
-    public static ArrayList<PeakCluster> createPeakClusters(MzXMLFile file, String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
-        ArrayList<Chromatogram> chromatograms = file.chromatograms;
-        ArrayList<PeakCluster> clusters = new ArrayList<>();
+    static ArrayList<LCPeakCluster> createPeakClusters(MzXMLFile file, String adductDir) throws IOException, InterruptedException, ClassNotFoundException {
+        ArrayList<Chromatogram> chromatograms = file.getChromatograms();
+        ArrayList<LCPeakCluster> clusters = new ArrayList<>();
         for(Chromatogram chromatogram : chromatograms){
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
-                clusters.add(new PeakCluster(chromatogram, 20, file));
+                clusters.add(new LCPeakCluster(chromatogram, 20, file));
             }
         }
         //filters out the invalid peakClusters (based on starting point)
-        clusters = (ArrayList<PeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        clusters = (ArrayList<LCPeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
         //maps the clusters to their adducts
         clusters = mapClusters(clusters, adductDir);
         return clusters;
     }
 
     /**
-     * This method maps each PeakCluster to it's possible adducts. This method has been replaced by the mapClusters method
+     * This method maps each LCPeakCluster to it's possible adducts. This method has been replaced by the mapClusters method
      * in the AdductDatabase class.
      * @param list the list of PeakClusters to map
-     * @return An ArrayList<PeakCluster> containing mapped PeakClusters
+     * @return An ArrayList<LCPeakCluster> containing mapped PeakClusters
      * @throws InterruptedException If there is an error with the concurrency
      * @throws IOException If there is an error reading the database
      */
     @Deprecated
-    static ArrayList<PeakCluster> mapClusters(ArrayList<PeakCluster> list, String dir) throws InterruptedException, IOException {
+    static ArrayList<LCPeakCluster> mapClusters(ArrayList<LCPeakCluster> list, String dir) throws InterruptedException, IOException {
         ArrayListMultimap<Integer,Adduct> multimap = ArrayListMultimap.create();
 
         ExecutorService executorService = Executors.newCachedThreadPool();
-        for(PeakCluster cluster : list){
+        for(LCPeakCluster cluster : list){
             //List<Adduct> sameCharge = dat.stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList());
             if(!multimap.keySet().contains(cluster.getCharge())){
-                multimap.putAll(cluster.getCharge(),AdductDatabase.readDatabase(dir,cluster.getCharge()));
+                multimap.putAll(cluster.getCharge(), AdductDatabase.readDatabase(dir,cluster.getCharge()));
             }
             Runnable task = () -> cluster.findAdducts(multimap.get(cluster.getCharge()).stream().filter(p -> p.getIonCharge()==cluster.getCharge()).collect(Collectors.toList()));
             executorService.submit(task);
@@ -342,7 +352,7 @@ public class PeakCluster implements Clusterable{
      * @param RTMax The maximum RT value across the MzXMLFiles
      * @param RTMin The minimum RT value across the MzXMLFiles
      */
-    void setRescaledValues(double MZMax, double MZMin, double RTMax, double RTMin){
+    public void setRescaledValues(double MZMax, double MZMin, double RTMax, double RTMin){
         double mz = chromatograms.get(startingPointIndex).getMeanMZ();
         normalisedMZ = (mz-MZMin)/(MZMax-MZMin);
         double rt = chromatograms.get(startingPointIndex).getStartingPointRT();
@@ -362,7 +372,7 @@ public class PeakCluster implements Clusterable{
      * Returns the m/z value for the starting chromatogram (the m+0 isotope)
      * @return the m/z value for the m+0 isotope
      */
-    double getMainMZ(){
+    public double getMainMZ(){
         return chromatograms.get(startingPointIndex).getMeanMZ();
     }
 
@@ -370,7 +380,34 @@ public class PeakCluster implements Clusterable{
      * Returns the RT value for the starting chromatogram (the m+0 isotope)
      * @return the RT value for the m+0 isotope
      */
-    double getMainRT(){
+    public double getMainRT(){
         return chromatograms.get(startingPointIndex).getStartingPointRT();
+    }
+
+    /**
+     * Returns all the fragments from the mono-isotopic chromatogram of this LCPeakCluster
+     * @return an ArrayList<LCMS2Fragment> containing all the fragments
+     */
+    public ArrayList<LCMS2Fragment> getMainChromatogramFragments(){
+        ArrayList<LCMS2Fragment> toReturn = new ArrayList<>();
+        for(LocalPeak localPeak : this.chromatograms.get(startingPointIndex).getIntensityScanPairs()){
+            toReturn.addAll(localPeak.getFragments());
+        }
+        return toReturn;
+    }
+
+    /**
+     * This method clusters the fragments from the mono-isotopic XIC
+     */
+    public void clusterFragments(){
+        DBSCANClusterer<LCMS2Fragment> clusterer = new DBSCANClusterer<>(0.7, 10); //Refine these values
+        List<Cluster<LCMS2Fragment>> clusterResults = clusterer.cluster(this.getMainChromatogramFragments());
+        for(Cluster<LCMS2Fragment> cluster : clusterResults){
+            fragmentClusters.add(new LCMS2Cluster((ArrayList<LCMS2Fragment>) cluster.getPoints()));
+        }
+    }
+
+    public ArrayList<LCMS2Cluster> getFragmentClusters(){
+        return fragmentClusters;
     }
 }

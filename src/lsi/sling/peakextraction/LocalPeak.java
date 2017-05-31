@@ -1,4 +1,8 @@
-package lsi.sling;
+package lsi.sling.peakextraction;
+
+import lsi.sling.FragmentHandling.LCMS2Fragment;
+
+import java.util.ArrayList;
 
 /**
  * Represents a single peak from the MZXML as a single data structure containing the relevant information.
@@ -15,7 +19,7 @@ public class LocalPeak implements Comparable<LocalPeak> {
     private double MZ;
     private double RT;
     private boolean isUsed;
-    private int msLevel;
+    private ArrayList<LCMS2Fragment> fragments;
 
     /**
      * Constructor which doesn't take the mslevel as one of its inputs. In this case, the msLevel is defaulted to 1.
@@ -31,25 +35,20 @@ public class LocalPeak implements Comparable<LocalPeak> {
         MZ = massCharge;
         RT = retentionTime;
         isUsed = false;
-        msLevel = 1; //defaults to 1 if not provided
+        fragments = new ArrayList<>();
     }
 
     /**
-     * Constructor which takes in and then populates all of the fields in this class.
-     * @param scan the scan number
-     * @param inten the intensity
-     * @param massCharge the m/z ratio value
-     * @param retentionTime the retention time of the scan
-     * @param msLvl the msLevel of the scan (e.g. 1 or 2 for ms1 or ms2 data). Note that this value must always be positive.
+     * Adds the input fragment to the existing list. This logic prevents people from removing fragments accidentaly.
+     * @param fragments The fragment to append
      */
-    public LocalPeak(int scan, double inten, double massCharge, double retentionTime, int msLvl){
-        scanNumber = scan;
-        intensity = inten;
-        MZ = massCharge;
-        RT = retentionTime;
-        isUsed = false;
-        if(msLvl<1) throw new IllegalArgumentException("msLvl must be positive");
-        msLevel = msLvl;
+    public void addFragment(LCMS2Fragment fragments) {
+        //this.fragments = fragments;
+        this.fragments.add(fragments);
+    }
+
+    public ArrayList<LCMS2Fragment> getFragments() {
+        return fragments;
     }
 
     /**

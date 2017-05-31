@@ -1,5 +1,9 @@
-package lsi.sling;
+package lsi.sling.mzxmlfilehandling;
 
+import lsi.sling.FragmentHandling.LCMS2Fragment;
+import lsi.sling.peakextraction.Chromatogram;
+import lsi.sling.peakextraction.LCPeakCluster;
+import lsi.sling.peakextraction.LocalPeak;
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -21,13 +25,11 @@ import java.util.stream.Collectors;
  */
 public class MzXMLFile {
 
-    private ArrayList<IScan> ms1scanArrayList;
-    private ArrayList<IScan> ms2scanArrayList;
-    private ArrayList<LocalPeak> ms1PeakList;
-    private ArrayList<LocalPeak> ms2PeakList;
-    ArrayList<Chromatogram> chromatograms;
-    private ArrayList<PeakCluster> peakClusters;
+    private ArrayList<LocalPeak> localPeakList;
+    private ArrayList<Chromatogram> chromatograms;
+    private ArrayList<LCPeakCluster> LCPeakClusters;
     private String fileLocation;
+    private ArrayList<ScanCombination> scanCombinations;
 
     double threshold = 0;
 
@@ -35,6 +37,7 @@ public class MzXMLFile {
         MZXMLFile source = new MZXMLFile(location);
         long time = System.currentTimeMillis();
         fileLocation = location;
+        scanCombinations = new ArrayList<>();
         // This is a data structure used to store scans and to navigate around the run
         ScanCollectionDefault scans = new ScanCollectionDefault();
         // Softly reference spectral data, make it reclaimable by GC
@@ -61,55 +64,83 @@ public class MzXMLFile {
         }
         // let's traverse the data-structure
         TreeMap<Integer, IScan> num2scanMap = scans.getMapNum2scan();
-        ms1scanArrayList = new ArrayList<>(); //ArrayList containing only the data from the scans with spectrums
-        ms2scanArrayList = new ArrayList<>();
+        int i = 0; //to iterate through the arraylist of ScanCombinations
         for (IScan scan : num2scanMap.values()) {
             ISpectrum spectrum = scan.getSpectrum();
             //if(spectrum==null){
             //    System.out.println("null");
             //}
             if (spectrum != null && scan.getMsLevel() == 1) {
-                //System.out.printf("%s does NOT have a parsed spectrum\n", scan.toString());
-                //System.out.printf("%s has a parsed spectrum, it contains %d data points\n",
-                //        scan.toString(), spectrum.getMZs().length);
-                ms1scanArrayList.add(scan);
+                scanCombinations.add(new ScanCombination(scan, 20, i));
+                i++;
+                //ms1scanArrayList.add(scan);
             } if(spectrum != null && scan.getMsLevel() == 2){
-                ms2scanArrayList.add(scan);
+                //sanity check to help prevent runtime bugs
+                if(scanCombinations.get(i-1).getMs1ScanNumber()==scan.getPrecursor().getParentScanNum()){
+                    scanCombinations.get(i-1).addMs2Scan(scan);
+                }
+                //ms2scanArrayList.add(scan);
             }
         }
 
 
         //creates an ArrayList containing only the spectrum data from ms1scanArrayList
-        ArrayList<ISpectrum> ms1SpectrumArrayList = new ArrayList<>();
-        for(IScan scan : ms1scanArrayList){
-            ms1SpectrumArrayList.add(scan.fetchSpectrum());
+        //ArrayList<ISpectrum> ms1SpectrumArrayList = new ArrayList<>();
+
+        localPeakList = new ArrayList<>();
+        for(ScanCombination combination : scanCombinations){
+            localPeakList.addAll(combination.createLocalPeaks());
         }
+        Collections.sort(localPeakList);
+
+        //for(IScan scan : ms1scanArrayList){
+        //    ms1SpectrumArrayList.add(scan.fetchSpectrum());
+        //}
 
         //creates an ArrayList containing only the spectrum data from ms2scanArrayList
-        ArrayList<ISpectrum> ms2SpectrumArrayList = new ArrayList<>();
+        /*ArrayList<ISpectrum> ms2SpectrumArrayList = new ArrayList<>();
         for(IScan scan : ms2scanArrayList){
             ms2SpectrumArrayList.add(scan.fetchSpectrum());
-        }
-
-        //Compiles all of the local peaks from across the entire file into a single ArrayList for later analysis
-        ms1PeakList = localPeakList(ms1scanArrayList,ms1SpectrumArrayList);
-        ms2PeakList = localPeakList(ms2scanArrayList, ms2SpectrumArrayList);
+        }*/
 
         //calculates the mean intensity of the LocalPeak objects and the value of mu+2sigma
         double mean = meanIntensity();
         //sets the threshold to be mu+2sigma for future steps
-        threshold = mean + 5*intensityStandardDeviation(mean);
-        //filters the ms1PeakList so that only LocalPeaks with intensity>(mu+2sigma) are kept for further analysis
-        //ms1PeakList = (ArrayList<LocalPeak>) ms1PeakList.stream().filter(localPeak -> localPeak.getIntensity()>fivesd).collect(Collectors.toList());
+        threshold = mean + 3*intensityStandardDeviation(mean);
+        //filters the localPeakList so that only LocalPeaks with intensity>(mu+3sigma) are kept for further analysis.
+        //Filtering the LocalPeaks here significantly improves downstream performance (when extracting the EICs)
+        localPeakList = (ArrayList<LocalPeak>) localPeakList.stream().filter(localPeak -> localPeak.getIntensity()>threshold).collect(Collectors.toList());
 
-        //iterates through ms1PeakList (which contains LocalPeak objects) to form the chromatograms. Note that they are in descending order (of max intensity)
-        chromatograms = new ArrayList<>();
+        /*for(IScan ms1Scan : ms1scanArrayList){
+            ArrayList<IScan> relevantMS2Scans = (ArrayList<IScan>) ms2scanArrayList.stream().filter(ms2Scan -> ms2Scan.getPrecursor().getParentScanNum()==ms1Scan.getNum()).collect(Collectors.toList());
+            System.out.println("test");
+        }*/
+
+        /*System.out.println("time test " + System.currentTimeMillis());
+        long timetest = System.currentTimeMillis();
+        for(IScan ms2Scan : ms2scanArrayList){
+            for(LocalPeak ms1LocalPeak : localPeakList.stream().filter(ms1peak -> ms1peak.getScanNumber()==ms2Scan.getPrecursor().getParentScanNum()).collect(Collectors.toList())){
+                if(ms2Scan.getPrecursor().getMzTarget()==ms1LocalPeak.getMZ()){
+                    ms1LocalPeak.setFragments(generateMS2Peaks(ms2Scan, ms1LocalPeak));
+                }
+            }
+        }
+        System.out.println(timetest);*/
+
+        //iterates through localPeakList (which contains LocalPeak objects) to form the chromatograms. Note that they are in descending order (of max intensity)
+        setChromatograms(new ArrayList<>());
         createChromatograms();
 
-        peakClusters = new ArrayList<>(); //the arraylist which contains the PeakCluster objects
-        peakClusters = createPeakClusters();
+        LCPeakClusters = new ArrayList<>(); //the arraylist which contains the LCPeakCluster objects
+        LCPeakClusters = createPeakClusters();
 
-        peakClusters = (ArrayList<PeakCluster>) peakClusters.stream().filter(peakCluster -> peakCluster.getMainIntensity() > threshold).collect(Collectors.toList());
+        //LCPeakClusters = (ArrayList<LCPeakCluster>) LCPeakClusters.stream().filter(peakCluster -> peakCluster.getMainIntensity() > threshold).collect(Collectors.toList());
+
+        //Clears up some memory after it's done using the scanCombinations objects
+        scanCombinations.clear();
+        scanCombinations.trimToSize();
+        System.gc();
+
 
         time = System.currentTimeMillis()-time;
         System.out.println(time);
@@ -139,12 +170,31 @@ public class MzXMLFile {
         return peakList;
     }
 
+    /**
+     * Given an ms2Scan and it's corresponding ms1Scan, this method converts the scan data into an arraylist of LCMS2Fragment
+     * items which can be added to the relevant LocalPeak object.
+     * @param ms2Scan The ms2Scan to "convert"
+     * @param ms1Peak The corresponding ms1LocalPeak
+     * @return and ArrayList containing the generated LCMS2Fragment objects
+     * @throws FileParsingException if there is an error fetching the spectra
+     */
+    private static ArrayList<LCMS2Fragment> generateMS2Peaks(IScan ms2Scan, LocalPeak ms1Peak) throws FileParsingException {
+        ArrayList<LCMS2Fragment> ms2LocalPeaks = new ArrayList<>();
+        ISpectrum spectrum = ms2Scan.fetchSpectrum();
+        for(int i=0; i<spectrum.getIntensities().length; i++){
+            ms2LocalPeaks.add(new LCMS2Fragment(spectrum.getIntensities()[i], spectrum.getMZs()[i],ms1Peak.getRT()));
+        }
+        return ms2LocalPeaks;
+    }
+
     private void createChromatograms() throws FileParsingException {
-        for(LocalPeak localPeak : ms1PeakList){
+        for(LocalPeak localPeak : localPeakList){
             if(!localPeak.getIsUsed()){
                 //iteratively creates recursive chromatograms from all localPeaks
                 //intensities below mu+5sigma should have already been filtered out
-                chromatograms.add(new Chromatogram(ms1scanArrayList, localPeak, 20, threshold, ms1PeakList));
+                ArrayList<IScan> scanList = (ArrayList<IScan>) scanCombinations.stream().map(ScanCombination::getMS1SCAN).collect(Collectors.toList());
+                getChromatograms().add(new Chromatogram(scanList, localPeak, 20, threshold, localPeakList));
+                //chromatograms.add(new Chromatogram(ms1scanArrayList, localPeak, 20, threshold, localPeakList));
             }
         }
     }
@@ -154,19 +204,19 @@ public class MzXMLFile {
      * be the only necessary point of access into this class. Note: This method does NOT map the clusters to their adducts,
      * that functionality is handled by the mapCluster method in the AdductDatabase class
      */
-    private ArrayList<PeakCluster> createPeakClusters() {
-        ArrayList<Chromatogram> chromatograms = this.chromatograms;
-        ArrayList<PeakCluster> clusters = new ArrayList<>();
+    private ArrayList<LCPeakCluster> createPeakClusters() {
+        ArrayList<Chromatogram> chromatograms = this.getChromatograms();
+        ArrayList<LCPeakCluster> clusters = new ArrayList<>();
         for(Chromatogram chromatogram : chromatograms){
             //iteratively loops through each unused chromatogram so that eventually every chromatogram is used
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
-                clusters.add(new PeakCluster(chromatogram, 20, this));
+                clusters.add(new LCPeakCluster(chromatogram, 20, this));
             }
         }
-        //filters out the invalid peakClusters (based on starting point)
+        //filters out the invalid LCPeakClusters (based on starting point)
         //this filtering happens at the end to ensure low-abundance isotopes aren't missed
-        clusters = (ArrayList<PeakCluster>) clusters.parallelStream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        clusters = (ArrayList<LCPeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
         return clusters;
     }
 
@@ -177,10 +227,10 @@ public class MzXMLFile {
      */
     private double meanIntensity(){
         double sum = 0;
-        for(LocalPeak peak : ms1PeakList){
+        for(LocalPeak peak : localPeakList){
             sum += peak.getIntensity();
         }
-        return sum/ ms1PeakList.size();
+        return sum/ localPeakList.size();
     }
 
     /**
@@ -190,62 +240,35 @@ public class MzXMLFile {
      */
     private double intensityStandardDeviation(double mean){
         double sum = 0;
-        for(LocalPeak peak : ms1PeakList){
+        for(LocalPeak peak : localPeakList){
             sum += (peak.getIntensity()-mean)*(peak.getIntensity()-mean);
         }
-        sum = sum/ ms1PeakList.size();
+        sum = sum/(localPeakList.size()-1);
+
         return Math.sqrt(sum);
     }
 
-    public ArrayList<LocalPeak> getMs1PeakList() {
-        return ms1PeakList;
-    }
-
-    public ArrayList<LocalPeak> getMs2PeakList() {
-        return ms2PeakList;
+    public ArrayList<LocalPeak> getLocalPeakList() {
+        return localPeakList;
     }
 
     /**
      * This method is used in the main method to map the adducts
-     * @param peakClusters The modified list of PeakClusters to save
+     * @param LCPeakClusters The modified list of PeakClusters to save
      */
-    void setPeakClusters(ArrayList<PeakCluster> peakClusters) {
-        this.peakClusters = peakClusters;
+    public void setLCPeakClusters(ArrayList<LCPeakCluster> LCPeakClusters) {
+        this.LCPeakClusters = LCPeakClusters;
     }
 
-    ArrayList<PeakCluster> getPeakClusters() {
-        return peakClusters;
+    public ArrayList<LCPeakCluster> getLCPeakClusters() {
+        return LCPeakClusters;
     }
 
-    /**
-     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
-     * @return the minimum m/z value from this MzXMLfile
-     */
-    public double getMinMZ(){
-        return ms1scanArrayList.stream().mapToDouble(IScan::getBasePeakMz).min().orElseThrow(() -> new ArithmeticException("no minimum m/z"));
+    public ArrayList<Chromatogram> getChromatograms() {
+        return chromatograms;
     }
 
-    /**
-     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
-     * @return the maximum m/z value from this MzXMLfile
-     */
-    public double getMaxMZ(){
-        return ms1scanArrayList.stream().mapToDouble(IScan::getBasePeakMz).max().orElseThrow(() -> new ArithmeticException("no maximum m/z"));
-    }
-
-    /**
-     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
-     * @return the minimum RT value from this MzXMLfile
-     */
-    public double getMinRT(){
-        return ms1scanArrayList.stream().mapToDouble(IScan::getRt).min().orElseThrow(() -> new ArithmeticException("no minimum rt"));
-    }
-
-    /**
-     * Used to rescale the m/z and RT to use the euclidean distance in the clustering step
-     * @return the maximum RT value from this MzXMLfile
-     */
-    public double getMaxRT(){
-        return ms1scanArrayList.stream().mapToDouble(IScan::getRt).max().orElseThrow(() -> new ArithmeticException("no maximum rt"));
+    private void setChromatograms(ArrayList<Chromatogram> chromatograms) {
+        this.chromatograms = chromatograms;
     }
 }
