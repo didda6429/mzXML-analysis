@@ -1,6 +1,7 @@
-package lsi.sling;
+package lsi.sling.mzxmlfilehandling;
 
-import lsi.sling.FragmentHandling.MS2Fragment;
+import lsi.sling.FragmentHandling.LCMS2Fragment;
+import lsi.sling.peakextraction.LocalPeak;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.spectrum.ISpectrum;
 import umich.ms.fileio.exceptions.FileParsingException;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
  *
  * @author Adithya Diddapur
  */
-public class ScanCombination {
+class ScanCombination {
 
     private IScan MS1SCAN;
     private ArrayList<IScan> ms2Scans;
@@ -29,7 +30,7 @@ public class ScanCombination {
      * @param ppm The ppm to use when mapping the ms2Peaks
      * @param ms1ScanNum The 'corrected' scan number of the ms1 scan (ignoring the ms2 scan numbers). This is used when creating the chromatograms.
      */
-    public ScanCombination(IScan ms1scan, int ppm, int ms1ScanNum){
+    ScanCombination(IScan ms1scan, int ppm, int ms1ScanNum){
         assert ms1scan.getNum() == 1; //checks that the scan really is a ms1 scan
         MS1SCAN = ms1scan;
         ms2Scans = new ArrayList<>();
@@ -41,16 +42,16 @@ public class ScanCombination {
      * Add an ms2 Scan to the object. This method checks that it is actually an ms2Scan before adding it.
      * @param ms2scan the ms2Scan to add
      */
-    public void addMs2Scan(IScan ms2scan){
+    void addMs2Scan(IScan ms2scan){
         assert ms2scan.getMsLevel()==2; //checks that the scan really is a ms2 scan
         ms2Scans.add(ms2scan);
     }
 
-    public int getMs1ScanNumber(){
+    int getMs1ScanNumber(){
         return MS1SCAN.getNum();
     }
 
-    public IScan getMS1SCAN(){
+    IScan getMS1SCAN(){
         return MS1SCAN;
     }
 
@@ -60,7 +61,7 @@ public class ScanCombination {
      * @return An ArrayList containing LocalPeaks with both ms1 and ms2 data
      * @throws FileParsingException if there is a problem fetching the spectrum
      */
-    public ArrayList<LocalPeak> createLocalPeaks() throws FileParsingException {
+    ArrayList<LocalPeak> createLocalPeaks() throws FileParsingException {
         ArrayList<LocalPeak> peakList = new ArrayList<>();
         ISpectrum spectrum = MS1SCAN.fetchSpectrum();
         //for loop to create all the MS1 Peaks
@@ -78,8 +79,8 @@ public class ScanCombination {
             if(closestMS1Peak != -1) {
                 for (int i = 0; i < ms2MZs.length; i++) {
                     //Should it use the ms1 or ms2 RT?
-                    //peakList.get(closestMS1Peak).addFragment(new MS2Fragment(ms2Intensities[i], ms2MZs[i], scan.getRt()));
-                    peakList.get(closestMS1Peak).addFragment(new MS2Fragment(ms2Intensities[i], ms2MZs[i], scan.getRt()));
+                    //peakList.get(closestMS1Peak).addFragment(new LCMS2Fragment(ms2Intensities[i], ms2MZs[i], scan.getRt()));
+                    peakList.get(closestMS1Peak).addFragment(new LCMS2Fragment(ms2Intensities[i], ms2MZs[i], scan.getRt()));
                 }
             }
         }

@@ -3,26 +3,26 @@ package lsi.sling.FragmentHandling;
 import org.apache.commons.math3.ml.clustering.Clusterable;
 
 /**
- * This class essentially acts as a wrapper class for the MS2Cluster class. It provides an interface for the DBSCAN
+ * This class essentially acts as a wrapper class for the LCMS2Cluster class. It provides an interface for the DBSCAN
  * clustering algorithm to access the 'aligned' MZ and
  */
 public class AlignedFragmentCluster implements Clusterable {
 
     private double alignedMZ;
     private double alignedRT;
-    private MS2Cluster fragmentCluster;
+    private LCMS2Cluster fragmentCluster;
 
     /**
-     * Creates an AlignedFragmentCluster object given it's underlying MS2Cluster object.
-     * @param inputCluster The MS2Cluster object
-     * @param rtDifference The RT difference between the over-arching PeakCluster and AlignedPeakCluster (which contain
-     *                     the input MS2Cluster)
+     * Creates an AlignedFragmentCluster object given it's underlying LCMS2Cluster object.
+     * @param inputCluster The LCMS2Cluster object
+     * @param rtDifference The RT difference between the over-arching LCPeakCluster and AlignedPeakCluster (which contain
+     *                     the input LCMS2Cluster)
      */
-    public AlignedFragmentCluster(MS2Cluster inputCluster, double rtDifference){
+    public AlignedFragmentCluster(LCMS2Cluster inputCluster, double rtDifference){
         fragmentCluster = inputCluster;
         //subtraction to maintain ordering?
-        alignedMZ = inputCluster.getMeanMZ();
-        alignedRT = inputCluster.getMeanRT() - rtDifference;
+        alignedMZ = inputCluster.getMZ();
+        alignedRT = inputCluster.getRT() - rtDifference;
     }
 
     public double getAlignedMZ() {
@@ -33,7 +33,7 @@ public class AlignedFragmentCluster implements Clusterable {
         return alignedRT;
     }
 
-    public MS2Cluster getFragmentCluster() {
+    public LCMS2Cluster getFragmentCluster() {
         return fragmentCluster;
     }
 

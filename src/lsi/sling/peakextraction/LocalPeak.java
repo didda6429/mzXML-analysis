@@ -1,6 +1,6 @@
-package lsi.sling;
+package lsi.sling.peakextraction;
 
-import lsi.sling.FragmentHandling.MS2Fragment;
+import lsi.sling.FragmentHandling.LCMS2Fragment;
 
 import java.util.ArrayList;
 
@@ -19,7 +19,7 @@ public class LocalPeak implements Comparable<LocalPeak> {
     private double MZ;
     private double RT;
     private boolean isUsed;
-    private ArrayList<MS2Fragment> fragments;
+    private ArrayList<LCMS2Fragment> fragments;
 
     /**
      * Constructor which doesn't take the mslevel as one of its inputs. In this case, the msLevel is defaulted to 1.
@@ -42,12 +42,12 @@ public class LocalPeak implements Comparable<LocalPeak> {
      * Adds the input fragment to the existing list. This logic prevents people from removing fragments accidentaly.
      * @param fragments The fragment to append
      */
-    public void addFragment(MS2Fragment fragments) {
+    public void addFragment(LCMS2Fragment fragments) {
         //this.fragments = fragments;
         this.fragments.add(fragments);
     }
 
-    public ArrayList<MS2Fragment> getFragments() {
+    public ArrayList<LCMS2Fragment> getFragments() {
         return fragments;
     }
 

@@ -1,6 +1,9 @@
-package lsi.sling;
+package lsi.sling.mzxmlfilehandling;
 
-import lsi.sling.FragmentHandling.MS2Fragment;
+import lsi.sling.FragmentHandling.LCMS2Fragment;
+import lsi.sling.peakextraction.Chromatogram;
+import lsi.sling.peakextraction.LCPeakCluster;
+import lsi.sling.peakextraction.LocalPeak;
 import umich.ms.datatypes.LCMSDataSubset;
 import umich.ms.datatypes.scan.IScan;
 import umich.ms.datatypes.scan.StorageStrategy;
@@ -23,8 +26,8 @@ import java.util.stream.Collectors;
 public class MzXMLFile {
 
     private ArrayList<LocalPeak> localPeakList;
-    ArrayList<Chromatogram> chromatograms;
-    private ArrayList<PeakCluster> peakClusters;
+    private ArrayList<Chromatogram> chromatograms;
+    private ArrayList<LCPeakCluster> LCPeakClusters;
     private String fileLocation;
     private ArrayList<ScanCombination> scanCombinations;
 
@@ -125,13 +128,13 @@ public class MzXMLFile {
         System.out.println(timetest);*/
 
         //iterates through localPeakList (which contains LocalPeak objects) to form the chromatograms. Note that they are in descending order (of max intensity)
-        chromatograms = new ArrayList<>();
+        setChromatograms(new ArrayList<>());
         createChromatograms();
 
-        peakClusters = new ArrayList<>(); //the arraylist which contains the PeakCluster objects
-        peakClusters = createPeakClusters();
+        LCPeakClusters = new ArrayList<>(); //the arraylist which contains the LCPeakCluster objects
+        LCPeakClusters = createPeakClusters();
 
-        //peakClusters = (ArrayList<PeakCluster>) peakClusters.stream().filter(peakCluster -> peakCluster.getMainIntensity() > threshold).collect(Collectors.toList());
+        //LCPeakClusters = (ArrayList<LCPeakCluster>) LCPeakClusters.stream().filter(peakCluster -> peakCluster.getMainIntensity() > threshold).collect(Collectors.toList());
 
         //Clears up some memory after it's done using the scanCombinations objects
         scanCombinations.clear();
@@ -168,18 +171,18 @@ public class MzXMLFile {
     }
 
     /**
-     * Given an ms2Scan and it's corresponding ms1Scan, this method converts the scan data into an arraylist of MS2Fragment
+     * Given an ms2Scan and it's corresponding ms1Scan, this method converts the scan data into an arraylist of LCMS2Fragment
      * items which can be added to the relevant LocalPeak object.
      * @param ms2Scan The ms2Scan to "convert"
      * @param ms1Peak The corresponding ms1LocalPeak
-     * @return and ArrayList containing the generated MS2Fragment objects
+     * @return and ArrayList containing the generated LCMS2Fragment objects
      * @throws FileParsingException if there is an error fetching the spectra
      */
-    private static ArrayList<MS2Fragment> generateMS2Peaks(IScan ms2Scan, LocalPeak ms1Peak) throws FileParsingException {
-        ArrayList<MS2Fragment> ms2LocalPeaks = new ArrayList<>();
+    private static ArrayList<LCMS2Fragment> generateMS2Peaks(IScan ms2Scan, LocalPeak ms1Peak) throws FileParsingException {
+        ArrayList<LCMS2Fragment> ms2LocalPeaks = new ArrayList<>();
         ISpectrum spectrum = ms2Scan.fetchSpectrum();
         for(int i=0; i<spectrum.getIntensities().length; i++){
-            ms2LocalPeaks.add(new MS2Fragment(spectrum.getIntensities()[i], spectrum.getMZs()[i],ms1Peak.getRT()));
+            ms2LocalPeaks.add(new LCMS2Fragment(spectrum.getIntensities()[i], spectrum.getMZs()[i],ms1Peak.getRT()));
         }
         return ms2LocalPeaks;
     }
@@ -190,7 +193,7 @@ public class MzXMLFile {
                 //iteratively creates recursive chromatograms from all localPeaks
                 //intensities below mu+5sigma should have already been filtered out
                 ArrayList<IScan> scanList = (ArrayList<IScan>) scanCombinations.stream().map(ScanCombination::getMS1SCAN).collect(Collectors.toList());
-                chromatograms.add(new Chromatogram(scanList, localPeak, 20, threshold, localPeakList));
+                getChromatograms().add(new Chromatogram(scanList, localPeak, 20, threshold, localPeakList));
                 //chromatograms.add(new Chromatogram(ms1scanArrayList, localPeak, 20, threshold, localPeakList));
             }
         }
@@ -201,19 +204,19 @@ public class MzXMLFile {
      * be the only necessary point of access into this class. Note: This method does NOT map the clusters to their adducts,
      * that functionality is handled by the mapCluster method in the AdductDatabase class
      */
-    private ArrayList<PeakCluster> createPeakClusters() {
-        ArrayList<Chromatogram> chromatograms = this.chromatograms;
-        ArrayList<PeakCluster> clusters = new ArrayList<>();
+    private ArrayList<LCPeakCluster> createPeakClusters() {
+        ArrayList<Chromatogram> chromatograms = this.getChromatograms();
+        ArrayList<LCPeakCluster> clusters = new ArrayList<>();
         for(Chromatogram chromatogram : chromatograms){
             //iteratively loops through each unused chromatogram so that eventually every chromatogram is used
             if(!chromatogram.getInCluster()){
                 chromatogram.setInCluster();
-                clusters.add(new PeakCluster(chromatogram, 20, this));
+                clusters.add(new LCPeakCluster(chromatogram, 20, this));
             }
         }
-        //filters out the invalid peakClusters (based on starting point)
+        //filters out the invalid LCPeakClusters (based on starting point)
         //this filtering happens at the end to ensure low-abundance isotopes aren't missed
-        clusters = (ArrayList<PeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
+        clusters = (ArrayList<LCPeakCluster>) clusters.stream().filter(peakCluster -> peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).isValidStartingPoint()).collect(Collectors.toList());
         return clusters;
     }
 
@@ -251,14 +254,21 @@ public class MzXMLFile {
 
     /**
      * This method is used in the main method to map the adducts
-     * @param peakClusters The modified list of PeakClusters to save
+     * @param LCPeakClusters The modified list of PeakClusters to save
      */
-    void setPeakClusters(ArrayList<PeakCluster> peakClusters) {
-        this.peakClusters = peakClusters;
+    public void setLCPeakClusters(ArrayList<LCPeakCluster> LCPeakClusters) {
+        this.LCPeakClusters = LCPeakClusters;
     }
 
-    ArrayList<PeakCluster> getPeakClusters() {
-        return peakClusters;
+    public ArrayList<LCPeakCluster> getLCPeakClusters() {
+        return LCPeakClusters;
     }
 
+    public ArrayList<Chromatogram> getChromatograms() {
+        return chromatograms;
+    }
+
+    private void setChromatograms(ArrayList<Chromatogram> chromatograms) {
+        this.chromatograms = chromatograms;
+    }
 }

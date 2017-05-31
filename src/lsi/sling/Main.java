@@ -2,7 +2,12 @@ package lsi.sling;
 
 import com.opencsv.CSVWriter;
 import lsi.sling.FragmentHandling.AlignedFragmentCluster;
-import lsi.sling.FragmentHandling.MS2Fragment;
+import lsi.sling.FragmentHandling.LCMS2Fragment;
+import lsi.sling.databasehandling.AdductDatabase;
+import lsi.sling.mzxmlfilehandling.MzXMLFile;
+import lsi.sling.peakextraction.AlignedPeakCluster;
+import lsi.sling.peakextraction.LCPeakCluster;
+import lsi.sling.peakextraction.LocalPeak;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import umich.ms.fileio.exceptions.FileParsingException;
@@ -27,7 +32,7 @@ public class Main {
 //    public static ArrayList<IScan> ms1scanArrayList;
 //    public static ArrayList<LocalPeak> ms1PeakList;
 //    public static ArrayList<Chromatogram> chromatograms;
-//    public static ArrayList<PeakCluster> peakClusters;
+//    public static ArrayList<LCPeakCluster> peakClusters;
 //    //static String location = "S:\\mzXML Sample Data\\7264381_RP_pos.mzXML";
       //static String location = "C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML";
 //    static String location = "C:/Users/lsiv67/Documents/DDApos/CS52684_pos_IDA.mzXML";
@@ -81,23 +86,23 @@ public class Main {
         //maps each peak cluster in each file to it's adducts
         //this task is inherrently parallel, so each file is called sequentially and then the function acts concurrently
         for(MzXMLFile file : files) {
-            file.setPeakClusters(AdductDatabase.mapClusters(file, databaseDir));
-            //file.getPeakClusters() = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
+            file.setLCPeakClusters(AdductDatabase.mapClusters(file, databaseDir));
+            //file.getLCPeakClusters() = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
         }
 
         //THE FOLLOWING CODE CHUNK DEALS WITH THE SAMPLE ALIGNMENT PROCESS
-        ArrayList<PeakCluster> allPeakClusters = new ArrayList<>();
+        ArrayList<LCPeakCluster> allLCPeakClusters = new ArrayList<>();
         //Stores ALL peak clusters across all samples in a single list for downstream clustering and alignment
         for(MzXMLFile file : files){
-            allPeakClusters.addAll(file.getPeakClusters());
+            allLCPeakClusters.addAll(file.getLCPeakClusters());
         }
 
         //Finds the max and min RT and m/z values to use when rescaling the locations of the clusters (to use the euclidean distance)
         //If there is an error in the stream (the min or max can't be found), return -1
-        double mzMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).min().orElse(-1);
-        double mzMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainMZ).max().orElse(-1);
-        double rtMin = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).min().orElse(-1);
-        double rtMax = allPeakClusters.stream().mapToDouble(PeakCluster::getMainRT).max().orElse(-1);
+        double mzMin = allLCPeakClusters.stream().mapToDouble(LCPeakCluster::getMainMZ).min().orElse(-1);
+        double mzMax = allLCPeakClusters.stream().mapToDouble(LCPeakCluster::getMainMZ).max().orElse(-1);
+        double rtMin = allLCPeakClusters.stream().mapToDouble(LCPeakCluster::getMainRT).min().orElse(-1);
+        double rtMax = allLCPeakClusters.stream().mapToDouble(LCPeakCluster::getMainRT).max().orElse(-1);
 
         assert mzMax != -1: "No mzMax";
         assert mzMin != -1: "No mzMin";
@@ -105,18 +110,18 @@ public class Main {
         assert rtMax != -1: "No rtMax";
 
         //Sets the rescaled values (to use the euclidean distance when clustering)
-        for(PeakCluster cluster : allPeakClusters){
+        for(LCPeakCluster cluster : allLCPeakClusters){
             cluster.setRescaledValues(mzMax, mzMin, rtMax, rtMin);
         }
 
         //Peforms the clustering and stores the results in a list
-        DBSCANClusterer<PeakCluster> clusterer = new DBSCANClusterer<>(0.005, files.size()-2); //epsilon=0.005 works quite well
-        List<Cluster<PeakCluster>> clusterResults = clusterer.cluster(allPeakClusters);
+        DBSCANClusterer<LCPeakCluster> clusterer = new DBSCANClusterer<>(0.005, files.size()-2); //epsilon=0.005 works quite well
+        List<Cluster<LCPeakCluster>> clusterResults = clusterer.cluster(allLCPeakClusters);
 
         //'converts' the Cluster objects returned from the DBSCANClusterer to AlignedPeakCluster objects and stores them in alignedPeakClusters
         ArrayList<AlignedPeakCluster> alignedPeakClusters = new ArrayList<>();
 
-        for(Cluster<PeakCluster> cluster : clusterResults){
+        for(Cluster<LCPeakCluster> cluster : clusterResults){
             alignedPeakClusters.add(new AlignedPeakCluster(cluster.getPoints(), 20));
         }
         for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
@@ -125,7 +130,7 @@ public class Main {
 
         //Cluster the fragments in each individual peakCluster
         for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
-            for(PeakCluster cluster : alignedPeakCluster.getClusters()){
+            for(LCPeakCluster cluster : alignedPeakCluster.getClusters()){
                 cluster.clusterFragments();
             }
             //TODO: cluster the fragments within each peakCluster
@@ -147,8 +152,8 @@ public class Main {
             //writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/alignedTestData/");
             writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/AlignedFragments/");
         }
-        //writeMS2PeakClustersToCSV(allPeakClusters, "D:/lsiv67/mzXML Sample Data/testdata/");
-        ArrayList<PeakCluster> clustersWithFragments = (ArrayList<PeakCluster>) allPeakClusters.stream().filter(p -> p.getFragmentClusters().size()>0).collect(Collectors.toList()); //for debugging
+        //writeMS2PeakClustersToCSV(allLCPeakClusters, "D:/lsiv67/mzXML Sample Data/testdata/");
+        ArrayList<LCPeakCluster> clustersWithFragments = (ArrayList<LCPeakCluster>) allLCPeakClusters.stream().filter(p -> p.getFragmentClusters().size()>0).collect(Collectors.toList()); //for debugging
         System.out.println(System.currentTimeMillis()-time);
         time = System.currentTimeMillis()-time;
         System.out.println("test");
@@ -181,9 +186,9 @@ public class Main {
                 csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getAlignedMZ()), String.valueOf(fragmentCluster.getAlignedRT()), "2", String.valueOf(i)});
             }
             i++;
-        /*for(PeakCluster cluster : alignedPeakCluster.getClusters()){
+        /*for(LCPeakCluster cluster : alignedPeakCluster.getClusters()){
             csvWriter.writeNext(new String[]{String.valueOf(cluster.getMainMZ()), String.valueOf(cluster.getMainRT()), "1", String.valueOf(i)});
-            for(MS2Cluster fragmentCluster : cluster.getFragmentClusters()){
+            for(LCMS2Cluster fragmentCluster : cluster.getFragmentClusters()){
                 csvWriter.writeNext(new String[]{String.valueOf(fragmentCluster.getMedianMZ()), String.valueOf(fragmentCluster.getMedianRT()), "2", String.valueOf(i)});
             }
             i++;
@@ -192,13 +197,13 @@ public class Main {
         }
     }
 
-    static void writeMS2PeakClustersToCSV(ArrayList<PeakCluster> peakClusters, String folder) throws IOException{
-        for(PeakCluster peakCluster : peakClusters) {
-            if(peakCluster.getMainChromatogramFragments().size()>0) {
-                CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + peakCluster.getMainMZ() + ".csv"))));
-                csvWriter.writeNext(new String[]{String.valueOf(peakCluster.getMainMZ()), String.valueOf(peakCluster.getMainRT()), String.valueOf(peakCluster.getMainIntensity()),"1"});
-                ArrayList<MS2Fragment> fragmentsToWrite = peakCluster.getMainChromatogramFragments();
-                for (MS2Fragment fragment : fragmentsToWrite) {
+    static void writeMS2PeakClustersToCSV(ArrayList<LCPeakCluster> LCPeakClusters, String folder) throws IOException{
+        for(LCPeakCluster LCPeakCluster : LCPeakClusters) {
+            if(LCPeakCluster.getMainChromatogramFragments().size()>0) {
+                CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File(folder + LCPeakCluster.getMainMZ() + ".csv"))));
+                csvWriter.writeNext(new String[]{String.valueOf(LCPeakCluster.getMainMZ()), String.valueOf(LCPeakCluster.getMainRT()), String.valueOf(LCPeakCluster.getMainIntensity()),"1"});
+                ArrayList<LCMS2Fragment> fragmentsToWrite = LCPeakCluster.getMainChromatogramFragments();
+                for (LCMS2Fragment fragment : fragmentsToWrite) {
                     csvWriter.writeNext(new String[]{String.valueOf(fragment.getMZ()), String.valueOf(fragment.getRT()), String .valueOf(fragment.getIntensity()), "2"});
                 }
                 csvWriter.close();
@@ -211,13 +216,13 @@ public class Main {
      * @param list The returned list from the clustering algorithm
      * @throws IOException If there is an error with the file handling
      */
-    static void writeToCSV(List<Cluster<PeakCluster>> list) throws IOException{
+    static void writeToCSV(List<Cluster<LCPeakCluster>> list) throws IOException{
         CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("S:/mzXML Sample Data/list.csv"))));
 
         for(int i=0; i<list.size(); i++){
-            Cluster<PeakCluster> cluster = list.get(i);
-            for(PeakCluster peakCluster : cluster.getPoints()){
-                csvWriter.writeNext(new String[]{String.valueOf(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getMeanMZ()), String.valueOf(peakCluster.getChromatograms().get(peakCluster.getStartingPointIndex()).getStartingPointRT()), String.valueOf(i)});
+            Cluster<LCPeakCluster> cluster = list.get(i);
+            for(LCPeakCluster LCPeakCluster : cluster.getPoints()){
+                csvWriter.writeNext(new String[]{String.valueOf(LCPeakCluster.getChromatograms().get(LCPeakCluster.getStartingPointIndex()).getMeanMZ()), String.valueOf(LCPeakCluster.getChromatograms().get(LCPeakCluster.getStartingPointIndex()).getStartingPointRT()), String.valueOf(i)});
             }
         }
         csvWriter.close();
@@ -228,10 +233,10 @@ public class Main {
      * @param clusterArrayList The clusters to write
      * @throws IOException If there is an error with the file handling
      */
-    static void writeToCSV(ArrayList<PeakCluster> clusterArrayList) throws IOException {
+    static void writeToCSV(ArrayList<LCPeakCluster> clusterArrayList) throws IOException {
         CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("S:/mzXML Sample Data/test1.csv"))));
 
-        for(PeakCluster cluster : clusterArrayList){
+        for(LCPeakCluster cluster : clusterArrayList){
             csvWriter.writeNext(new String[]{String.valueOf(cluster.getMainMZ()), String.valueOf(cluster.getMainRT())});
         }
         csvWriter.close();
