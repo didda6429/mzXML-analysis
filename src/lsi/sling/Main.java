@@ -50,7 +50,7 @@ public class Main {
     //static String adductFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Adducts.csv";
     static String adductFile = "D:/lsiv67/mzXML Sample Data/Adducts.csv";
     //static String compoundFile = "C:/Users/lsiv67/Documents/mzXML Sample Data/Database.csv";
-    static String compoundFile = "D:/lsiv67 mzXML Sample Data/Database.csv";
+    static String compoundFile = "D:/lsiv67/mzXML Sample Data/Database.csv";
 //    //static String adductFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Adducts.csv";
 //    //static String compoundFile = "C:/Users/Adithya Diddapur/Documents/mzXML sample files/adductDatabase/Database.csv";
 //
