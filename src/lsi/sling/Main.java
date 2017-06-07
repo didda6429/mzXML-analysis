@@ -3,13 +3,10 @@ package lsi.sling;
 import com.opencsv.CSVWriter;
 import lsi.sling.FragmentHandling.AlignedFragmentCluster;
 import lsi.sling.FragmentHandling.LCMS2Fragment;
-import lsi.sling.databasehandling.AdductDatabase;
 import lsi.sling.mzxmlfilehandling.MzXMLFile;
 import lsi.sling.peakextraction.AlignedPeakCluster;
 import lsi.sling.peakextraction.LCPeakCluster;
-import lsi.sling.peakextraction.LocalPeak;
 import org.apache.commons.math3.ml.clustering.Cluster;
-import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import umich.ms.fileio.exceptions.FileParsingException;
 
 import java.io.BufferedWriter;
@@ -21,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 //"S:\\mzXML Sample Data\\7264381_RP_pos.mzXML"
 //"C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML"
@@ -57,9 +53,13 @@ public class Main {
 //    static double threshold = 0;
     public static ArrayList<MzXMLFile> files;
 
+    public static IDAmzXMLFileHandler fileHandler;
+
     public static void main(String[] args) throws FileParsingException, IOException, ClassNotFoundException, InterruptedException {
         double time = System.currentTimeMillis();
-        files = new ArrayList<>();
+
+        fileHandler = new IDAmzXMLFileHandler(databaseDir, adductFile, compoundFile, new File(mzXMLFileDir).listFiles(f -> f.getName().endsWith(".mzXML")), 20);
+        /*files = new ArrayList<>();
         File[] mzXMLFiles = new File(mzXMLFileDir).listFiles(f -> f.getName().endsWith(".mzXML"));
         //used for debugging
         //files.add(new MzXMLFile("C:\\Users\\lsiv67\\Documents\\mzXML Sample Data\\7264381_RP_pos.mzXML", databaseDir, adductFile, compoundFile));
@@ -79,19 +79,22 @@ public class Main {
             executorService.submit(task);
         }
         executorService.shutdown();
-        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);*/
+        /*AdductDatabase.createDatabase(databaseDir,adductFile,compoundFile);
+        files = readMzXMLFiles(new File(mzXMLFileDir).listFiles(f -> f.getName().endsWith(".mzXML")));
 
-        System.out.println("test");
+        System.out.println("test");*/
 
         //maps each peak cluster in each file to it's adducts
         //this task is inherrently parallel, so each file is called sequentially and then the function acts concurrently
-        for(MzXMLFile file : files) {
+        //This step only needs to be performed for the aligned peak clusters
+        /*for(MzXMLFile file : files) {
             file.setLCPeakClusters(AdductDatabase.mapClusters(file, databaseDir));
             //file.getLCPeakClusters() = AdductDatabase.mapClusters(file.peakClusters, databaseDir);
-        }
+        }*/
 
         //THE FOLLOWING CODE CHUNK DEALS WITH THE SAMPLE ALIGNMENT PROCESS
-        ArrayList<LCPeakCluster> allLCPeakClusters = new ArrayList<>();
+        /*ArrayList<LCPeakCluster> allLCPeakClusters = new ArrayList<>();
         //Stores ALL peak clusters across all samples in a single list for downstream clustering and alignment
         for(MzXMLFile file : files){
             allLCPeakClusters.addAll(file.getLCPeakClusters());
@@ -123,12 +126,12 @@ public class Main {
 
         for(Cluster<LCPeakCluster> cluster : clusterResults){
             alignedPeakClusters.add(new AlignedPeakCluster(cluster.getPoints(), 20));
-        }
-        for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+        }*/
+        /*for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
             AdductDatabase.mapClusters(alignedPeakCluster, databaseDir);
-        }
+        }*/
 
-        //Cluster the fragments in each individual peakCluster
+/*        //Cluster the fragments in each individual peakCluster
         for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
             for(LCPeakCluster cluster : alignedPeakCluster.getClusters()){
                 cluster.clusterFragments();
@@ -137,7 +140,7 @@ public class Main {
             //for now just collates them
             alignedPeakCluster.clusterFragments();
             
-        }
+        }*/
 
         //ArrayList<LocalPeak> ms2LocalPeaks = new ArrayList<>();
         //for(MzXMLFile file : files){
@@ -148,35 +151,40 @@ public class Main {
         //ArrayList<AlignedPeakCluster> withFragments = numberPeakClustersWithFragments(alignedPeakClusters);
 
         //writeAlignedPeakClusterFragmentsToCSV(alignedPeakClusters.get(1), "D:/lsiv67/mzXML Sample Data/alignedTestData/");
-        for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
+        /*for(AlignedPeakCluster alignedPeakCluster : alignedPeakClusters){
             //writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/alignedTestData/");
             writeAlignedPeakClusterFragmentsToCSV(alignedPeakCluster, "D:/lsiv67/mzXML Sample Data/AlignedFragments/");
-        }
+        }*/
         //writeMS2PeakClustersToCSV(allLCPeakClusters, "D:/lsiv67/mzXML Sample Data/testdata/");
-        ArrayList<LCPeakCluster> clustersWithFragments = (ArrayList<LCPeakCluster>) allLCPeakClusters.stream().filter(p -> p.getFragmentClusters().size()>0).collect(Collectors.toList()); //for debugging
+        //ArrayList<LCPeakCluster> clustersWithFragments = (ArrayList<LCPeakCluster>) allLCPeakClusters.stream().filter(p -> p.getFragmentClusters().size()>0).collect(Collectors.toList()); //for debugging'
         System.out.println(System.currentTimeMillis()-time);
+        System.out.println(fileHandler.getAlignedPeakClusters().size());
         time = System.currentTimeMillis()-time;
         System.out.println("test");
     }
 
-    static ArrayList<AlignedPeakCluster> numberPeakClustersWithFragments(ArrayList<AlignedPeakCluster> peakClusters){
-        ArrayList<AlignedPeakCluster> toReturn = new ArrayList<>();
-        for(AlignedPeakCluster alignedPeakCluster : peakClusters){
-            if(alignedPeakCluster.getClusters().stream().filter(p -> p.getFragmentClusters().size()>0).count()>0){
-                toReturn.add(alignedPeakCluster);
-            }
+    public static ArrayList<MzXMLFile> readMzXMLFiles(File[] mzXMLFiles) throws InterruptedException {
+        ArrayList<MzXMLFile> files = new ArrayList<>();
+        assert mzXMLFiles != null : "no mzXML Files selected";
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        for(File file : mzXMLFiles){
+            Runnable task = () -> {
+                try {
+                    files.add(new MzXMLFile(file.getAbsolutePath()));
+                } catch (FileParsingException | InterruptedException | IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            };
+            executorService.submit(task);
         }
-        return toReturn;
+        executorService.shutdown();
+        executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+        return files;
     }
 
-    static void writeLocalPeakListToCSV(ArrayList<LocalPeak> peakList) throws IOException{
-        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(new File("S:/mzXML Sample Data/localpeak.csv"))));
-        for(LocalPeak localPeak : peakList){
-            csvWriter.writeNext(new String[]{String.valueOf(localPeak.getMZ()), String.valueOf(localPeak.getRT()), String.valueOf(localPeak.getIntensity())});
-        }
-        csvWriter.close();
-    }
-
+    /**
+     * For testing
+     */
     static void writeAlignedPeakClusterFragmentsToCSV(AlignedPeakCluster alignedPeakCluster, String folder) throws IOException{
         if(alignedPeakCluster.getAlignedFragmentClusters().size()>0) {
             int i = 0;
@@ -197,6 +205,9 @@ public class Main {
         }
     }
 
+    /**
+     * For testing
+     */
     static void writeMS2PeakClustersToCSV(ArrayList<LCPeakCluster> LCPeakClusters, String folder) throws IOException{
         for(LCPeakCluster LCPeakCluster : LCPeakClusters) {
             if(LCPeakCluster.getMainChromatogramFragments().size()>0) {
