@@ -17,11 +17,13 @@ public class AlignedFragmentCluster implements Clusterable {
      * @param inputCluster The LCMS2Cluster object
      * @param rtDifference The RT difference between the over-arching LCPeakCluster and AlignedPeakCluster (which contain
      *                     the input LCMS2Cluster)
+     * @param mzDifference The MZ difference between the over-arching LCPeakCluster and AlignedPeakCluster (which contain
+     *                     the input LCMS2Cluster)
      */
-    public AlignedFragmentCluster(LCMS2Cluster inputCluster, double rtDifference){
+    public AlignedFragmentCluster(LCMS2Cluster inputCluster, double rtDifference, double mzDifference){
         fragmentCluster = inputCluster;
         //subtraction to maintain ordering?
-        alignedMZ = inputCluster.getMZ();
+        alignedMZ = inputCluster.getMZ() - mzDifference;
         alignedRT = inputCluster.getRT() - rtDifference;
     }
 

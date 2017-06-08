@@ -80,10 +80,10 @@ public class AlignedPeakCluster {
      */
     public void clusterFragments(){
         alignedFragmentClusters = new ArrayList<>();
-        //Starts off by aligning the fragment M/Zs to correct for the RT drift
+        //Starts off by aligning the fragment M/Zs to correct for the RT (and MZ?) drift
         for(LCPeakCluster cluster : clusters){
             for(LCMS2Cluster LCMS2Cluster : cluster.getFragmentClusters()){
-                alignedFragmentClusters.add(new AlignedFragmentCluster(LCMS2Cluster, cluster.getMainRT()- medianRT));
+                alignedFragmentClusters.add(new AlignedFragmentCluster(LCMS2Cluster, cluster.getMainRT()- medianRT, cluster.getMainMZ() - medianMZ));
             }
         }
         //Now let's cluster them based only on the M/Z (in 1 dimension)
